@@ -11,6 +11,7 @@ import { generateMealPlan, type MealPlan, type PlanItem } from '@shared/nutritio
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
+import { DayKindBadge, PhasesPanel, useDayTargets } from '../components/PhasesPanel';
 import { IconTile } from '../components/visual';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
 import { buildShoppingList, SECTION_ORDER, shoppingListText, type Section, type ShoppingList } from '@shared/nutrition/shopping';
@@ -48,7 +49,7 @@ function MacroRing({ label, value, target, unit, color, big }: { label: string; 
   );
 }
 
-type Tab = 'hoy' | 'plan' | 'super' | 'alimentos' | 'recetas' | 'objetivos';
+type Tab = 'hoy' | 'plan' | 'super' | 'fases' | 'alimentos' | 'recetas' | 'objetivos';
 
 export function Nutrition() {
   const [tab, setTab] = useState<Tab>('hoy');
@@ -62,6 +63,7 @@ export function Nutrition() {
           { value: 'hoy', label: 'Registro diario' },
           { value: 'plan', label: 'Plan de comidas' },
           { value: 'super', label: 'Lista del súper' },
+          { value: 'fases', label: 'Fases y eventos' },
           { value: 'alimentos', label: 'Alimentos' },
           { value: 'recetas', label: 'Recetas y frecuentes' },
           { value: 'objetivos', label: 'Objetivos' },
@@ -70,6 +72,7 @@ export function Nutrition() {
       {tab === 'hoy' && <DailyLog />}
       {tab === 'plan' && <MealPlanView onShopping={() => setTab('super')} />}
       {tab === 'super' && <ShoppingView onPlan={() => setTab('plan')} />}
+      {tab === 'fases' && <PhasesPanel />}
       {tab === 'alimentos' && <FoodDB />}
       {tab === 'recetas' && <Recipes />}
       {tab === 'objetivos' && <Targets />}
@@ -87,7 +90,8 @@ function DailyLog() {
   const [editing, setEditing] = useState<FoodLog | null>(null);
   const logs = data.foodLogs.filter((l) => l.date === date);
   const totals = sumMacros(logs);
-  const t = st.targets;
+  const dayPlan = useDayTargets(date);
+  const t = dayPlan.targets;
   const slots: MealSlot[] = [...mealSlots(profile.mealsPerDay), 'extra'];
   const last14 = dateRange(addDays(today, -13), today).map((d) => ({ date: d, kcal: st.intake.get(d)?.kcal ?? null }));
 
@@ -122,8 +126,10 @@ function DailyLog() {
           <span className="muted cap-first">
             {formatDateLong(date)}
           </span>
+          <DayKindBadge kind={dayPlan.kind} label={dayPlan.label} />
         </div>
       </div>
+      {dayPlan.notes.length > 0 && <Alert kind="info">{dayPlan.notes.join(' ')}</Alert>}
       <div className="grid g3">
         <Card className="span3" title="Totales del día" hint={`${fmt(Math.max(0, t.kcal - totals.kcal))} kcal y ${fmt(Math.max(0, t.protein - totals.protein))} g de proteína restantes`}>
           <div className="macro-rings" data-testid="nut-remaining">

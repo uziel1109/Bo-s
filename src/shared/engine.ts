@@ -9,6 +9,8 @@ import { blendedTdee, dailyIntake, observedTdee, weightTrend, type DayIntake, ty
 import type { Routine } from './training/generator';
 import { hydrationTarget, type HydrationTarget } from './hydration/hydration';
 import type { ScenarioKey } from './types';
+import { dayPlanFor, legDaysFromRoutine, type DayPlan, type PhaseSettings } from './nutrition/phases';
+import { getExercise } from './training/exercises';
 
 export interface ActivePlan {
   id: string;
@@ -30,6 +32,7 @@ export interface AppData {
   routine: Routine | null;
   plan: ActivePlan | null;
   adjustments: Adjustment[];
+  phases?: PhaseSettings | null;
 }
 
 export interface EngineState {
@@ -47,6 +50,9 @@ export interface EngineState {
   recommendedScenario: ScenarioKey;
   recommendedTargets: NutritionTargets;
   targets: NutritionTargets; // plan activo (o recomendado si no hay plan)
+  todayTargets: NutritionTargets; // objetivo de HOY con descansos, recargas, eventos o mantenimiento aplicados
+  dayPlan: DayPlan;
+  legWeekdays: number[];
   projections: Record<ScenarioKey, ProjectionResult>;
   intake: Map<string, DayIntake>;
   hydration: HydrationTarget;
@@ -115,6 +121,8 @@ export function computeState(data: AppData, today: string): EngineState {
     resistanceTraining: true,
     minCalories: calorieFloor(p.sex),
   });
+  const legWeekdays = legDaysFromRoutine(data.routine, (id) => getExercise(id)?.primary);
+  const dayPlan = dayPlanFor(today, targets, data.phases, { tdee: tdee.tdee, floor: calorieFloor(p.sex), legWeekdays });
   const todayDay = new Date(today + 'T12:00:00').getDay();
   const trainingToday = data.routine?.days.find((d) => d.weekday === todayDay);
   const hydration = hydrationTarget({ ...p, weightKg: compWeight }, trainingToday ? Math.min(p.sessionMinutes, trainingToday.estMinutes) : 0, flags);
@@ -133,6 +141,9 @@ export function computeState(data: AppData, today: string): EngineState {
     recommendedScenario: recScenario,
     recommendedTargets,
     targets,
+    todayTargets: dayPlan.targets,
+    dayPlan,
+    legWeekdays,
     projections,
     intake,
     hydration,

@@ -6,6 +6,7 @@ import type { Adjustment, BodyLog, CardioLog, Food, FoodLog, Profile, RecoveryLo
 import type { Routine } from '@shared/training/generator';
 import type { MealPlan } from '@shared/nutrition/mealPlanner';
 import type { StackItem } from '@shared/calendar';
+import type { PhaseSettings } from '@shared/nutrition/phases';
 import { today as todayFn, uid } from '@shared/utils';
 
 export interface PhotoRow {
@@ -96,8 +97,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const profile = profileRow?.data ?? null;
       const routine = routines[0] ? { ...routines[0].data, id: routines[0].id } : null;
       const plan = plans[0] ? { id: plans[0].id, created_at: plans[0].created_at, targets: plans[0].targets, scenario: plans[0].scenario as ActivePlan['scenario'], reason: plans[0].reason } : null;
+      const settingsMap = Object.fromEntries(settingsRows.map((r) => [r.key, r.value]));
       const data: AppData | null = profile
-        ? { profile, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions: sessions.map((s) => ({ ...s, exercises: s.exercises ?? [] })), routine, plan, adjustments }
+        ? { profile, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions: sessions.map((s) => ({ ...s, exercises: s.exercises ?? [] })), routine, plan, adjustments, phases: (settingsMap.phases as PhaseSettings | undefined) ?? null }
         : null;
       setRaw({
         profile,
@@ -111,7 +113,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         recipes,
         favorites,
         calendarTasks,
-        settings: Object.fromEntries(settingsRows.map((r) => [r.key, r.value])),
+        settings: settingsMap,
       });
       setError(null);
     } catch (e) {

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { BellRing, CalendarPlus, Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Card } from '../components/ui';
+import { Card, fmt } from '../components/ui';
+import { DayKindBadge, KIND_COLOR, usePhaseCtx } from '../components/PhasesPanel';
+import { dayPlanFor } from '@shared/nutrition/phases';
 import { generateDayTasks, type DayTask } from '@shared/calendar';
 import { addDays, formatDateLong, toISODate, uid, weekStart } from '@shared/utils';
 import { api } from '../api';
@@ -11,7 +13,8 @@ import { buildIcs, icsEventCount, parseTime, type IcsOptions } from '@shared/cal
 const TYPE_COLOR: Record<string, string> = { entreno: 'var(--accent)', comida: 'var(--protein)', suplemento: 'var(--fat)', hidratacion: 'var(--water)', cardio: 'var(--s3)', descanso: 'var(--muted)', medicion: 'var(--carbs)', revision: 'var(--info)', personal: 'var(--text-2)' };
 
 export function CalendarPage() {
-  const { data, profile, today, stack, calendarTasks, reload } = useApp();
+  const { data, profile, today, stack, calendarTasks, reload, state: st } = useApp();
+  const phaseCtx = usePhaseCtx();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [sel, setSel] = useState(today);
   const [newTask, setNewTask] = useState('');
@@ -89,12 +92,25 @@ export function CalendarPage() {
                   </div>
                   {train && <span className="tiny" style={{ color: 'var(--accent)' }}>● {train.name}</span>}
                   {!train && <span className="tiny muted">Descanso</span>}
+                  {(() => {
+                    const k = dayPlanFor(d, st.targets, data.phases, phaseCtx);
+                    return k.kind !== 'deficit' ? <span className="tiny" style={{ color: KIND_COLOR[k.kind], fontWeight: 650 }}>◆ {k.kind === 'evento' ? k.label.replace('Evento: ', '') : k.label}</span> : null;
+                  })()}
                 </div>
               );
             })}
           </div>
         </Card>
         <Card title={<span className="cap-first">{formatDateLong(sel)}</span>}>
+          {(() => {
+            const k = dayPlanFor(sel, st.targets, data.phases, phaseCtx);
+            return (
+              <div className="mb12 small">
+                <DayKindBadge kind={k.kind} label={k.label} /> Objetivo: <b>{fmt(k.kcal)} kcal</b>
+                {k.notes[0] && <div className="tiny muted mt4">{k.notes[0]}</div>}
+              </div>
+            );
+          })()}
           <div className="col" style={{ gap: 2 }}>
             {selTasks.map((t) => (
               <div key={t.key} className={`check ${t.done ? 'done' : ''}`} onClick={() => toggle(sel, t)} data-testid={`task-${t.key}`}>

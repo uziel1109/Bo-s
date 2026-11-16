@@ -1,5 +1,6 @@
 // Motor de adaptación: analiza varias semanas de datos y PROPONE ajustes justificados.
 // Nunca modifica el plan por sí mismo: cada propuesta requiere confirmación del usuario.
+import { breakDaysBetween } from '../nutrition/phases';
 import type { Adjustment, Claim, Muscle } from '../types';
 import type { AppData, EngineState } from '../engine';
 import { isCompleteDay, weeklyAverages, weightRate } from './trend';
@@ -75,8 +76,15 @@ export function analyzeAdaptation(data: AppData, st: EngineState, today: string)
   const floor = calorieFloor(p.sex);
   const metrics = { ratePctPerWeek: rate?.pctPerWeek ?? null, rateKgPerWeek: rate?.kgPerWeek ?? null, waistChange3w, logCoverage: round(logCoverage, 2), avgIntake, avgProtein, kcalAdherence, strengthTrend: strength, daysOnPlan };
 
+  // Fases especiales: durante la fase de mantenimiento o cerca de un descanso de dieta el peso sube por agua y
+  // glucógeno, así que no se proponen recortes de calorías.
+  const maintenanceOn = !!data.phases?.maintenance && data.phases.maintenance.start <= today;
+  const recentBreak = breakDaysBetween(data.phases?.dietBreak, addDays(today, -20), today) > 0;
+  if (maintenanceOn) claims.push({ kind: 'dato', text: 'Estás en la fase de mantenimiento: no se proponen recortes de calorías. Vigila que tu tendencia de peso se mantenga en el rango indicado.' });
+  else if (recentBreak) claims.push({ kind: 'dato', text: 'Hubo un descanso de dieta en las últimas 3 semanas: el peso incluye agua y glucógeno recuperados, así que no se evalúa el estancamiento hasta que pasen 3 semanas.' });
+
   // ── Datos y meta alcanzada
-  if (st.composition.bf.value <= p.targetBodyFat) {
+  if (st.composition.bf.value <= p.targetBodyFat && !maintenanceOn) {
     claims.push({ kind: 'estimacion', text: `Tu % de grasa estimado (${st.composition.bf.value} %) ya está en tu objetivo de ${p.targetBodyFat} %. Confírmalo con una medición más precisa si es posible.` });
     if (t.deficit > 0 && !pending.has('calorias'))
       proposals.push({ kind: 'calorias', title: 'Pasar a calorías de mantenimiento', justification: ['Alcanzaste tu % de grasa objetivo (estimado).', 'Mantener el déficit ya no es necesario; el mantenimiento favorece rendimiento y ganancia muscular.'], payload: { kcalDelta: t.deficit, newKcal: t.tdee } });
@@ -100,7 +108,7 @@ export function analyzeAdaptation(data: AppData, st: EngineState, today: string)
   if (overEating) claims.push({ kind: 'recomendacion', text: 'Antes de reducir calorías conviene acercarse al objetivo actual. Revisa comidas fuera de casa, aceites y bebidas.' });
 
   // ── Estancamiento real
-  if (rate && enoughTime && !lowLogging && !overEating && st.composition.bf.value > p.targetBodyFat) {
+  if (rate && enoughTime && !lowLogging && !overEating && !maintenanceOn && !recentBreak && st.composition.bf.value > p.targetBodyFat) {
     const stalled = rate.pctPerWeek > -0.15 && (waistChange3w == null || waistChange3w > -0.5);
     const recomposition = rate.pctPerWeek > -0.15 && waistChange3w != null && waistChange3w <= -1;
     const tooFast = rate.pctPerWeek < -Math.max(1.0, scenarioRate * 1.5) && daysOnPlan >= 14;

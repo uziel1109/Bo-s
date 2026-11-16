@@ -8,11 +8,13 @@ import { ActivityRings, BodyProgress, JourneyBar, MetricTile, QuickTile } from '
 import { MuscleMap } from '../components/MuscleMap';
 import { weightTrend } from '@shared/analytics/trend';
 import { dailyCoach } from '@shared/assistant/assistant';
-import { addDays, DAY_NAMES, formatDateLong, uid } from '@shared/utils';
+import { addDays, DAY_NAMES, daysBetween, formatDateLong, uid } from '@shared/utils';
 import { stepsTarget, weeklyCardioSummary } from '@shared/cardio/cardio';
 import { strengthTrend } from '@shared/analytics/adaptation';
 import { getExercise } from '@shared/training/exercises';
 import { realPace } from '@shared/body/realPace';
+import { etaWithBreaks, nearGoal } from '@shared/nutrition/phases';
+import { DayKindBadge } from '../components/PhasesPanel';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
@@ -33,7 +35,7 @@ export function Dashboard() {
   const [modal, setModal] = useState<'peso' | 'recuperacion' | null>(null);
   const [photo, setPhoto] = useState(false);
   const intake = st.intake.get(today);
-  const t = st.targets;
+  const t = st.todayTargets;
   const water = data.waterLogs.filter((w) => w.date === today).reduce((a, w) => a + w.ml, 0);
   const trend = useMemo(() => weightTrend(data.bodyLogs).filter((x) => x.date >= addDays(today, -90)), [data.bodyLogs, today]);
   const coach = useMemo(() => dailyCoach(data, st), [data, st]);
@@ -52,8 +54,11 @@ export function Dashboard() {
   const urgent = st.flags.filter((f) => f.level === 'urgente');
   const proj = st.projections[profile.scenario];
   const real = realPace(data.bodyLogs, today, st.trendWeight ?? st.currentWeight, comp.goalWeight);
-  const realEta = real.etaDate ? new Date(real.etaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
-  const eta = proj.reached && proj.weeksToGoal != null ? new Date(addDays(today, proj.weeksToGoal * 7) + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
+  const brk = data.phases?.dietBreak;
+  const realEtaDate = real.etaDate ? etaWithBreaks(brk, today, real.etaDate).eta : null;
+  const planEtaDate = proj.reached && proj.weeksToGoal != null ? etaWithBreaks(brk, today, addDays(today, proj.weeksToGoal * 7)).eta : null;
+  const realEta = realEtaDate ? new Date(realEtaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
+  const eta = planEtaDate ? new Date(planEtaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
   const todayMuscles = useMemo(() => {
     const prim = new Set<Muscle>();
     const sec = new Set<Muscle>();
@@ -85,6 +90,14 @@ export function Dashboard() {
           </Alert>
         </div>
       ))}
+
+      {!data.phases?.maintenance && nearGoal(comp.bf.value, profile.targetBodyFat, st.trendWeight ?? st.currentWeight, comp.goalWeight) && (
+        <div className="mb16">
+          <Alert kind="ok">
+            <b>¡Estás muy cerca de tu meta!</b> Prepara tu fase de mantenimiento para no recuperar grasa: Nutrición → Fases y eventos.
+          </Alert>
+        </div>
+      )}
 
       {/* Tarjeta principal: progreso hacia el objetivo */}
       <section className="hero" style={{ ['--h1' as string]: 'var(--m-lime)', ['--h2' as string]: 'var(--m-cyan)' }}>
@@ -123,7 +136,7 @@ export function Dashboard() {
             <div className="row mt16">
               {eta ? (
                 <span className="eta-pill" title="Si sigues el ritmo del escenario de tu plan">
-                  <CalendarClock size={16} /> Según el plan: ~{proj.weeksToGoal} sem · {eta}
+                  <CalendarClock size={16} /> Según el plan: ~{Math.round(daysBetween(today, planEtaDate!) / 7)} sem · {eta}
                 </span>
               ) : (
                 <span className="eta-pill">
@@ -132,7 +145,7 @@ export function Dashboard() {
               )}
               {real.status === 'ok' && (
                 <span className="eta-pill real" title={real.message} data-testid="dash-real-eta">
-                  <Footprints size={16} /> A tu ritmo real: ~{real.weeksToGoal} sem · {realEta}
+                  <Footprints size={16} /> A tu ritmo real: ~{Math.round(daysBetween(today, realEtaDate!) / 7)} sem · {realEta}
                 </span>
               )}
               {real.status === 'sin_perdida' && <span className="eta-pill real">A tu ritmo real: sin bajar aún</span>}
@@ -184,7 +197,11 @@ export function Dashboard() {
       <div className="grid g3 mb16">
         {/* Anillos del día */}
         <Card
-          title="Tu día"
+          title={
+            <span className="row" style={{ gap: 8 }}>
+              Tu día <DayKindBadge kind={st.dayPlan.kind} label={st.dayPlan.label} />
+            </span>
+          }
           icon={<Sparkles />}
           hint={`${fmt(Math.max(0, t.kcal - (intake?.kcal ?? 0)))} kcal restantes`}
           actions={
