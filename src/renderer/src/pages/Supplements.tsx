@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Ban, Check, Plus, Trash2 } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Field, PageHead, Tabs, Empty } from '../components/ui';
+import { Alert, Card, Field, Tabs, Empty } from '../components/ui';
 import { assessSupplements, CLASS_LABEL, NOT_RECOMMENDED, SUPPLEMENTS, type SuppAssessment, type SuppClass } from '@shared/supplements/supplements';
 import { REFERENCES } from '@shared/references';
 import { isCompleteDay } from '@shared/analytics/trend';
@@ -31,7 +32,7 @@ export function Supplements() {
 
   return (
     <div className="page">
-      <PageHead title="Suplementación" sub="Análisis basado en evidencia para tu situación. Ningún suplemento se recomienda por defecto." />
+      <Hero module="suplementos" title="Suplementación" sub="Análisis basado en evidencia para tu situación. Ningún suplemento se recomienda por defecto." />
       <Alert kind="info">Los suplementos son secundarios frente a la alimentación, el entrenamiento y el sueño. Las dosis mostradas son las habitualmente estudiadas, no prescripciones; con cualquier condición médica o medicamento consulta a tu médico.</Alert>
       <div className="mt16">
         <Tabs value={tab} onChange={setTab} tabs={[{ value: 'analisis', label: 'Análisis para ti' }, { value: 'mis', label: 'Lo que tomo' }, { value: 'evitar', label: 'No recomendados' }]} />

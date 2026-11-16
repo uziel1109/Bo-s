@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Card, PageHead } from '../components/ui';
+import { Card } from '../components/ui';
 import { generateDayTasks, type DayTask } from '@shared/calendar';
 import { addDays, formatDateLong, toISODate, uid, weekStart } from '@shared/utils';
 import { api } from '../api';
@@ -50,7 +51,7 @@ export function CalendarPage() {
 
   return (
     <div className="page">
-      <PageHead title="Calendario" sub="Tu planificación diaria. Lo que no completes no genera penalizaciones ni cambios automáticos." />
+      <Hero module="calendario" title="Calendario" sub="Tu planificación diaria. Lo que no completes no genera penalizaciones ni cambios automáticos." />
       <div className="grid g3">
         <Card
           className="span2"

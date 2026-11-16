@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Brain, Check, KeyRound, MessageSquare, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Empty, Field, fmt, PageHead, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Claims, Empty, Field, fmt, Stat, Tabs } from '../components/ui';
 import { answer, aiContextSummary, matchQuestion, QUESTIONS } from '@shared/assistant/assistant';
 import { analyzeAdaptation } from '@shared/analytics/adaptation';
 import { buildWeeklyReport } from '@shared/analytics/weeklyReport';
@@ -19,7 +20,7 @@ export function AI() {
   const [tab, setTab] = useState<Tab>(pending ? 'ajustes' : 'asistente');
   return (
     <div className="page">
-      <PageHead title="Inteligencia artificial" sub="Análisis de tus datos reales. Cada afirmación indica si es un dato, una estimación, una hipótesis o una recomendación." />
+      <Hero module="ia" title="Inteligencia artificial" sub="Análisis de tus datos reales. Cada afirmación indica si es un dato, una estimación, una hipótesis o una recomendación." />
       <Tabs
         value={tab}
         onChange={setTab}

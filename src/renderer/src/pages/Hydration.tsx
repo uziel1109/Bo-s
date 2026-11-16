@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Droplets, Plus, Trash2 } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, fmt, NumInput, PageHead, Ring, Stat } from '../components/ui';
+import { Alert, Card, Claims, fmt, NumInput, Ring, Stat } from '../components/ui';
 import { SimpleBars } from '../components/charts';
 import { hourlyDistribution, QUICK_AMOUNTS, hydrationTarget } from '@shared/hydration/hydration';
 import { uid } from '@shared/utils';
@@ -26,7 +27,7 @@ export function Hydration() {
 
   return (
     <div className="page">
-      <PageHead title="Hidratación" sub="Una guía orientativa, no una cantidad obligatoria." />
+      <Hero module="hidratacion" title="Hidratación" sub="Una guía orientativa, no una cantidad obligatoria." />
       {h.restricted && (
         <div className="mb16">
           <Alert kind="warn">Tienes una condición o indicación médica que limita los líquidos: sigue la cifra de tu médico.</Alert>

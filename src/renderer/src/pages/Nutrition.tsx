@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Barcode, Camera, Copy, Pencil, Plus, RefreshCw, Save, Search, Star, Trash2, Utensils } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Field, fmt, MacroBar, Modal, NumInput, PageHead, Seg, Stat, Tabs, Empty } from '../components/ui';
+import { Alert, Ring, Card, Claims, Field, fmt, MacroBar, Modal, NumInput, Seg, Stat, Tabs, Empty } from '../components/ui';
 import { IntakeArea } from '../components/charts';
 import type { Food, FoodCategory, FoodLog, Macros, MealSlot } from '@shared/types';
 import { MEAL_LABEL, mealSlots, distributeMacros } from '@shared/nutrition/targets';
@@ -9,6 +10,41 @@ import { filterFoodsForProfile, foodTags, macrosFor, searchFoods, substitutes, s
 import { generateMealPlan, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
+import { IconTile } from '../components/visual';
+import { Apple, Coffee, Cookie, Moon, Soup } from 'lucide-react';
+
+const MEAL_ICON: Record<MealSlot, { icon: typeof Coffee; color: string }> = {
+  desayuno: { icon: Coffee, color: 'var(--m-amber)' },
+  colacion1: { icon: Apple, color: 'var(--m-green)' },
+  comida: { icon: Soup, color: 'var(--m-orange)' },
+  colacion2: { icon: Apple, color: 'var(--m-green)' },
+  cena: { icon: Moon, color: 'var(--m-violet)' },
+  extra: { icon: Cookie, color: 'var(--m-slate)' },
+};
+
+/** Anillo de un macronutriente con su valor y objetivo. */
+function MacroRing({ label, value, target, unit, color, big }: { label: string; value: number; target: number; unit: string; color: string; big?: boolean }) {
+  const size = big ? 128 : 92;
+  const pct = target > 0 ? Math.round((value / target) * 100) : 0;
+  return (
+    <div className="macro-ring">
+      <Ring value={value} max={target} size={size} stroke={big ? 12 : 9} color={color}>
+        <div>
+          <div className="mono" style={{ fontWeight: 750, fontSize: big ? 24 : 17 }}>
+            {fmt(value)}
+          </div>
+          <div className="tiny muted">{pct}%</div>
+        </div>
+      </Ring>
+      <div className="small" style={{ fontWeight: 600, marginTop: 6 }}>
+        {label}
+      </div>
+      <div className="tiny muted">
+        de {fmt(target)} {unit}
+      </div>
+    </div>
+  );
+}
 
 type Tab = 'hoy' | 'plan' | 'alimentos' | 'recetas' | 'objetivos';
 
@@ -16,7 +52,7 @@ export function Nutrition() {
   const [tab, setTab] = useState<Tab>('hoy');
   return (
     <div className="page">
-      <PageHead title="Nutrición" sub="Registro diario, plan de comidas, base de datos de alimentos y objetivos." />
+      <Hero module="nutricion" title="Nutrición" sub="Registro diario, plan de comidas, base de datos de alimentos y objetivos." />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -84,22 +120,16 @@ function DailyLog() {
         </div>
       </div>
       <div className="grid g3">
-        <Card className="span2" title="Totales del día">
-          <div className="grid g2" style={{ alignItems: 'center' }}>
-            <div className="col" style={{ gap: 10 }}>
-              <MacroBar label="Calorías" color="var(--s1)" value={totals.kcal} target={t.kcal} unit="kcal" />
-              <MacroBar label="Proteína" color="var(--protein)" value={totals.protein} target={t.protein} />
-              <MacroBar label="Carbos" color="var(--carbs)" value={totals.carbs} target={t.carbs} />
-              <MacroBar label="Grasas" color="var(--fat)" value={totals.fat} target={t.fat} />
-              <MacroBar label="Fibra" color="var(--fiber)" value={totals.fiber} target={t.fiber} overOk />
-            </div>
-            <div className="grid g2">
-              <Stat label="Restantes" value={fmt(Math.max(0, t.kcal - totals.kcal))} unit="kcal" testId="nut-remaining" />
-              <Stat label="Proteína restante" value={fmt(Math.max(0, t.protein - totals.protein))} unit="g" />
-            </div>
+        <Card className="span3" title="Totales del día" hint={`${fmt(Math.max(0, t.kcal - totals.kcal))} kcal y ${fmt(Math.max(0, t.protein - totals.protein))} g de proteína restantes`}>
+          <div className="macro-rings" data-testid="nut-remaining">
+            <MacroRing label="Calorías" value={totals.kcal} target={t.kcal} unit="kcal" color="var(--m-orange)" big />
+            <MacroRing label="Proteína" value={totals.protein} target={t.protein} unit="g" color="var(--m-pink)" />
+            <MacroRing label="Carbos" value={totals.carbs} target={t.carbs} unit="g" color="var(--m-amber)" />
+            <MacroRing label="Grasas" value={totals.fat} target={t.fat} unit="g" color="var(--m-violet)" />
+            <MacroRing label="Fibra" value={totals.fiber} target={t.fiber} unit="g" color="var(--m-green)" />
           </div>
         </Card>
-        <Card title="Últimos 14 días">
+        <Card className="span3" title="Últimos 14 días">
           <IntakeArea data={last14} target={t.kcal} height={170} />
         </Card>
       </div>
@@ -110,6 +140,7 @@ function DailyLog() {
           <Card
             key={slot}
             title={MEAL_LABEL[slot]}
+            icon={<IconTile icon={MEAL_ICON[slot].icon} color={MEAL_ICON[slot].color} size={30} />}
             hint={items.length ? `${fmt(m.kcal)} kcal · P ${fmt(m.protein)} · C ${fmt(m.carbs)} · G ${fmt(m.fat)}` : undefined}
             actions={
               <>

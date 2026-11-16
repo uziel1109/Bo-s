@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, Brain, CalendarDays, Droplets, Dumbbell, HeartPulse, LayoutDashboard, LineChart, Pill, Settings as SettingsIcon, User, UtensilsCrossed } from 'lucide-react';
 import { useStore } from './store';
 import { Toasts } from './components/ui';
+import { IconTile } from './components/visual';
 import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
 import { Body } from './pages/Body';
@@ -94,7 +95,7 @@ export function App() {
           <div key={n.key}>
             {(i === 8 || i === 10) && <div className="nav-sep" />}
             <button className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => setPage(n.key)} data-testid={`nav-${n.key}`} title={n.label}>
-              <n.icon />
+              <IconTile module={n.key} />
               <span>{n.label}</span>
               {n.key === 'ia' && pending > 0 && <span className="badge accent" style={{ marginLeft: 'auto' }}>{pending}</span>}
             </button>

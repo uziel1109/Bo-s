@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Camera, Flame, Moon, Trash2, Upload } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp, type PhotoRow } from '../store';
-import { Alert, Card, Empty, Field, fmt, PageHead, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Empty, Field, fmt, Seg, Stat, Tabs } from '../components/ui';
 import { SimpleLine, WeightTrendChart } from '../components/charts';
 import { RecoveryModal } from '../components/QuickLogs';
 import { weightTrend, isCompleteDay } from '@shared/analytics/trend';
@@ -18,7 +19,7 @@ export function Progress() {
   const [tab, setTab] = useState<Tab>('graficas');
   return (
     <div className="page">
-      <PageHead title="Progreso" sub="Tus datos reales a lo largo del tiempo." />
+      <Hero module="progreso" title="Progreso" sub="Tus datos reales a lo largo del tiempo." />
       <Tabs
         value={tab}
         onChange={setTab}

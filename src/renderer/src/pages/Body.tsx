@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, fmt, PageHead, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Claims, fmt, Seg, Stat, Tabs } from '../components/ui';
 import { ScenarioChart } from '../components/charts';
 import { BodyLogModal } from '../components/QuickLogs';
 import { METHOD_LABEL, METHOD_ERROR, ACTIVITY_BASE } from '@shared/body/composition';
@@ -18,7 +19,7 @@ export function Body() {
   const [tab, setTab] = useState<Tab>('composicion');
   return (
     <div className="page">
-      <PageHead title="Mi cuerpo" sub="Composición corporal, medidas y simulador de transformación." />
+      <Hero module="cuerpo" title="Mi cuerpo" sub="Composición corporal, medidas y simulador de transformación." />
       <Tabs value={tab} onChange={setTab} tabs={[{ value: 'composicion', label: 'Composición' }, { value: 'medidas', label: 'Medidas' }, { value: 'simulador', label: 'Simulador' }]} />
       {tab === 'composicion' && <Composition />}
       {tab === 'medidas' && <Measures />}

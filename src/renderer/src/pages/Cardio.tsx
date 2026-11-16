@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Field, fmt, NumInput, PageHead, Stat, Bar } from '../components/ui';
+import { Alert, Card, Claims, Field, fmt, NumInput, Stat, Bar } from '../components/ui';
 import { SimpleBars } from '../components/charts';
 import { StepsInput } from '../components/QuickLogs';
 import { cardioPlan, estimateCardioKcal, heartRateZones, MODALITY_LABEL, stepsTarget, weeklyCardioSummary } from '@shared/cardio/cardio';
@@ -31,7 +32,7 @@ export function Cardio() {
 
   return (
     <div className="page">
-      <PageHead title="Cardio y actividad diaria" sub="El cardio complementa al entrenamiento de fuerza; la actividad diaria es la base del gasto." />
+      <Hero module="cardio" title="Cardio y actividad diaria" sub="El cardio complementa al entrenamiento de fuerza; la actividad diaria es la base del gasto." />
       <div className="grid g4 mb16">
         <Card tight>
           <Stat label="Pasos hoy" value={fmt(stepsToday)} foot={`Meta: ${fmt(steps.target)}`} />

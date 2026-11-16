@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Download, FolderOpen, HardDriveDownload, HardDriveUpload, Moon, Save, Sun, Trash2, Upload } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useStore } from '../store';
-import { Alert, Card, Claims, Field, PageHead, Seg, Tabs } from '../components/ui';
+import { Alert, Card, Claims, Field, Seg, Tabs } from '../components/ui';
 import { HealthSection, MeasuresSection, NutritionSection, PersonalSection, TrainingSection } from '../components/ProfileSections';
 import { validateProfile } from '@shared/profileDefaults';
 import type { Profile } from '@shared/types';
@@ -14,7 +15,7 @@ export function Settings() {
   const [tab, setTab] = useState<Tab>('perfil');
   return (
     <div className="page">
-      <PageHead title="Configuración" />
+      <Hero module="config" title="Configuración" sub="Perfil, apariencia, respaldos, privacidad y fuentes científicas." />
       <Tabs
         value={tab}
         onChange={setTab}

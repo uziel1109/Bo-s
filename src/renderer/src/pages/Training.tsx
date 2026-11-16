@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Info, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
+import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Empty, Field, fmt, Modal, NumInput, PageHead, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { SimpleBars, SimpleLine } from '../components/charts';
 import { MuscleMap } from '../components/MuscleMap';
 import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REGION_LABEL, type Exercise } from '@shared/training/exercises';
@@ -17,7 +18,7 @@ export function Training() {
   const [tab, setTab] = useState<Tab>('sesion');
   return (
     <div className="page">
-      <PageHead title="Entrenamiento" sub="Rutina personalizada, registro de sesiones y sobrecarga progresiva." />
+      <Hero module="entrenamiento" title="Entrenamiento" sub="Rutina personalizada, registro de sesiones y sobrecarga progresiva." />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -321,40 +322,42 @@ function SessionLogger() {
 function DayPreview({ day }: { day: RoutineDay }) {
   const [info, setInfo] = useState<Exercise | null>(null);
   return (
-    <Card title={`${day.name} · ${day.focus}`} hint={`~${day.estMinutes} min`}>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Ejercicio</th>
-            <th className="right">Series</th>
-            <th className="right">Reps</th>
-            <th className="right">RIR</th>
-            <th className="right">Descanso</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {day.exercises.map((e) => (
-            <tr key={e.exerciseId}>
-              <td>
-                {e.name}
-                {e.caution && <div className="tiny" style={{ color: 'var(--warn)' }}>{e.caution}</div>}
-              </td>
-              <td className="right">{e.sets}</td>
-              <td className="right">
-                {e.repMin}–{e.repMax}
-              </td>
-              <td className="right">{e.rir}</td>
-              <td className="right">{Math.round(e.restSec / 6) / 10} min</td>
-              <td className="right">
-                <button className="btn ghost icon sm" onClick={() => setInfo(getExercise(e.exerciseId) ?? null)}>
-                  <Info />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <Card title={`${day.name} · ${day.focus}`} hint={`~${day.estMinutes} min · ${day.exercises.length} ejercicios`}>
+      <div className="ex-list">
+        {day.exercises.map((e, i) => {
+          const ex = getExercise(e.exerciseId);
+          return (
+            <button key={e.exerciseId} className="ex-row" onClick={() => setInfo(ex ?? null)}>
+              <span className="ex-num">{i + 1}</span>
+              {ex && <MuscleMap primary={[ex.primary]} secondary={ex.secondary} size={52} />}
+              <span className="grow" style={{ textAlign: 'left' }}>
+                <b>{e.name}</b>
+                <span className="tiny muted" style={{ display: 'block' }}>
+                  {ex ? MUSCLE_LABEL[ex.primary] : ''}
+                  {e.caution ? ' · ⚠ precaución' : ''}
+                </span>
+              </span>
+              <span className="ex-chips">
+                <span className="chip-stat">
+                  <b>{e.sets}</b> series
+                </span>
+                <span className="chip-stat">
+                  <b>
+                    {e.repMin}–{e.repMax}
+                  </b>{' '}
+                  reps
+                </span>
+                <span className="chip-stat">
+                  RIR <b>{e.rir}</b>
+                </span>
+                <span className="chip-stat">
+                  <Timer size={12} /> {Math.round(e.restSec / 6) / 10} min
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
       {info && <ExerciseModal ex={info} onClose={() => setInfo(null)} />}
     </Card>
   );
