@@ -50,4 +50,14 @@ async function boot() {
   );
 }
 
-boot();
+declare global {
+  interface Window {
+    __bodyosBootFailed?: (reason: string) => void;
+  }
+}
+
+boot().catch((e) => {
+  // Por ejemplo, un archivo de la versión anterior que ya no existe: el guardián limpia la caché y recarga.
+  if (window.__bodyosBootFailed) window.__bodyosBootFailed(`No se pudo iniciar: ${(e as Error)?.message ?? e}`);
+  else document.getElementById('root')!.innerHTML = '<div style="padding:32px;font-family:system-ui;color:#eee">No se pudo iniciar BODY OS. Cierra y vuelve a abrir la app.</div>';
+});
