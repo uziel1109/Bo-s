@@ -76,7 +76,10 @@ async function main() {
   await win.click('[data-testid=food-option-pollo_pechuga_cocida]');
   await win.fill('[data-testid=food-grams]', '200');
   await win.click('[data-testid=food-add-confirm]');
+  // Espera a que el formulario se reinicie: si el campo con el foco desaparece, la tecla se pierde.
+  await win.waitForTimeout(300);
   await win.keyboard.press('Escape');
+  await win.waitForSelector('.modal-back', { state: 'detached' });
   await win.waitForTimeout(400);
   await shot(win, '04-nutricion');
   await win.click('[data-testid=nav-dashboard]');
