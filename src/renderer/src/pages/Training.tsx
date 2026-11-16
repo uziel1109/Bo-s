@@ -4,6 +4,7 @@ import { Hero } from '../components/visual';
 import { useApp } from '../store';
 import { Alert, Card, Chips, Claims, DetailsHint, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { GymMode } from '../components/GymMode';
+import { NoTrainingBanner, NoTrainingButton } from '../components/NoTraining';
 import { MesocycleView, MuscleFeedbackCard, MuscleProgressPanel, StretchBadge, TechniqueToggle, useMeso } from '../components/Hypertrophy';
 import { rirForWeek, techniqueFor } from '@shared/training/hypertrophy';
 import { MobilityCard, useMobility } from '../components/Mobility';
@@ -34,7 +35,8 @@ export function Training() {
   const [tab, setTab] = useState<Tab>('sesion');
   return (
     <div className="page">
-      <Hero module="entrenamiento" title="Entrenamiento" sub="Rutina personalizada, registro de sesiones y sobrecarga progresiva." />
+      <Hero module="entrenamiento" title="Entrenamiento" sub="Rutina personalizada, registro de sesiones y sobrecarga progresiva." actions={<NoTrainingButton />} />
+      <NoTrainingBanner />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -90,7 +92,7 @@ function buildLogs(day: RoutineDay, sessions: WorkoutSession[], deload: boolean)
 }
 
 function SessionLogger() {
-  const { data, today, reload, toast, profile } = useApp();
+  const { data, today, reload, toast, profile, pausedRoutine } = useApp();
   const routine = data.routine;
   const dow = new Date(today + 'T12:00:00').getDay();
   const existing = data.sessions.find((s) => s.date === today && !s.completed) ?? null;
@@ -129,7 +131,7 @@ function SessionLogger() {
     return () => clearInterval(t);
   }, [rest]);
 
-  if (!routine) return <Empty>No tienes una rutina activa. Genérala en “Mi rutina”.</Empty>;
+  if (!routine) return pausedRoutine ? <Empty>Tu rutina está en pausa (modo sin entrenamiento). Toca “Volver a entrenar” cuando quieras retomarla.</Empty> : <Empty>No tienes una rutina activa. Genérala en “Mi rutina”.</Empty>;
 
   const start = () => {
     const day = adapted?.day;
@@ -616,7 +618,7 @@ export function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => vo
 // ───────────────────────── Rutina
 
 function RoutineView() {
-  const { data, profile, reload, toast, routineId } = useApp();
+  const { data, profile, reload, toast, routineId, pausedRoutine } = useApp();
   const r = data.routine;
   const [preview, setPreview] = useState<Routine | null>(null);
   const tgt = weeklySetTarget(profile.experience);
@@ -636,6 +638,7 @@ function RoutineView() {
     await save(copy, false);
   };
 
+  if (!r && pausedRoutine) return <Empty>Tu rutina ({pausedRoutine.splitLabel}, {pausedRoutine.daysPerWeek} días) está en pausa mientras usas el modo sin entrenamiento.</Empty>;
   if (!r)
     return (
       <Empty>

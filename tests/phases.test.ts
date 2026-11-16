@@ -86,3 +86,42 @@ describe('Fases de dieta', () => {
     expect(legDaysFromRoutine(routine, (id) => prim[id])).toEqual([1]);
   });
 });
+
+import { computeState, noTrainingActive, type AppData } from '../src/shared/engine';
+import { defaultProfile } from '../src/shared/profileDefaults';
+import { generateRoutine } from '../src/shared/training/generator';
+
+describe('Modo sin entrenamiento', () => {
+  const today = '2026-11-16';
+  const profile = { ...defaultProfile(), age: 32, heightCm: 178, weightKg: 95, waistCm: 102, neckCm: 40, trainingDays: [1, 2, 4, 5] };
+  const routine = generateRoutine(profile);
+  const base: AppData = { profile, bodyLogs: [], foodLogs: [], waterLogs: [], cardioLogs: [], stepsLogs: [], recoveryLogs: [], sessions: [], routine, plan: null, adjustments: [] };
+
+  it('vigencia con fecha de fin', () => {
+    expect(noTrainingActive({ enabled: true, since: today, until: '2026-11-20' }, '2026-11-20')).toBe(true);
+    expect(noTrainingActive({ enabled: true, since: today, until: '2026-11-20' }, '2026-11-21')).toBe(false);
+    expect(noTrainingActive({ enabled: false, since: today }, today)).toBe(false);
+  });
+
+  it('sin plan fijo: baja el gasto y las calorías; la proteína no cambia', () => {
+    const on = computeState({ ...base, routine: null, noTraining: { enabled: true, since: today } }, today);
+    const off = computeState(base, today);
+    expect(on.noTraining.active).toBe(true);
+    expect(on.tdeeFormula.tdee).toBeLessThan(off.tdeeFormula.tdee - 150);
+    expect(on.targets.kcal).toBeLessThan(off.targets.kcal);
+    expect(on.targets.protein).toBe(off.targets.protein);
+    expect(on.strengthSessionsPerWeek).toBe(0);
+  });
+
+  it('con plan fijo: resta el gasto del entrenamiento sin bajar del mínimo seguro', () => {
+    const off = computeState(base, today);
+    const plan = { id: 'p', created_at: '2026-11-01T00:00:00Z', scenario: 'moderado' as const, reason: '', targets: off.recommendedTargets };
+    const on = computeState({ ...base, plan, routine: null, noTraining: { enabled: true, since: today } }, today);
+    expect(on.noTraining.kcalDelta).toBeLessThan(-150);
+    expect(on.targets.kcal).toBe(plan.targets.kcal + on.noTraining.kcalDelta);
+    expect(on.targets.protein).toBe(plan.targets.protein);
+    const low = computeState({ ...base, plan: { ...plan, targets: { ...plan.targets, kcal: 1550 } }, routine: null, noTraining: { enabled: true, since: today } }, today);
+    expect(low.targets.kcal).toBe(1500);
+    expect(low.noTraining.floorLimited).toBe(true);
+  });
+});

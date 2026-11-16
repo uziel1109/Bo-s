@@ -1,7 +1,7 @@
 // Estado global de la interfaz: carga los registros desde la base local y calcula el estado del motor.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api } from './api';
-import { computeState, type ActivePlan, type AppData, type EngineState } from '@shared/engine';
+import { computeState, noTrainingActive, type ActivePlan, type AppData, type EngineState, type NoTrainingMode } from '@shared/engine';
 import type { Adjustment, BodyLog, CardioLog, Food, FoodLog, Profile, RecoveryLog, StepsLog, WaterLog, WorkoutSession } from '@shared/types';
 import type { Routine } from '@shared/training/generator';
 import type { MealPlan } from '@shared/nutrition/mealPlanner';
@@ -30,6 +30,7 @@ export interface Store {
   state: EngineState | null;
   mealPlan: (MealPlan & { id: string }) | null;
   routineId: string | null;
+  pausedRoutine: Routine | null;
   stack: (StackItem & { id: string })[];
   supplementLogs: { id: string; date: string; supplement_key: string; name: string; dose: string }[];
   photos: PhotoRow[];
@@ -105,8 +106,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const routine = routines[0] ? { ...routines[0].data, id: routines[0].id } : null;
       const plan = plans[0] ? { id: plans[0].id, created_at: plans[0].created_at, targets: plans[0].targets, scenario: plans[0].scenario as ActivePlan['scenario'], reason: plans[0].reason } : null;
       const settingsMap = Object.fromEntries(settingsRows.map((r) => [r.key, r.value]));
+      const noTraining = (settingsMap.no_training as NoTrainingMode | undefined) ?? null;
+      // En modo sin entrenamiento la rutina queda en pausa: ni el motor ni el calendario la programan.
+      const paused = noTrainingActive(noTraining, todayFn());
       const data: AppData | null = profile
-        ? { profile, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions: sessions.map((s) => ({ ...s, exercises: s.exercises ?? [] })), routine, plan, adjustments, phases: (settingsMap.phases as PhaseSettings | undefined) ?? null }
+        ? { profile, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions: sessions.map((s) => ({ ...s, exercises: s.exercises ?? [] })), routine: paused ? null : routine, plan, adjustments, phases: (settingsMap.phases as PhaseSettings | undefined) ?? null, noTraining }
         : null;
       setRaw({
         profile,
@@ -114,6 +118,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         data,
         mealPlan: mealPlans[0] ? { ...mealPlans[0].data, id: mealPlans[0].id } : null,
         routineId: routine?.id ?? null,
+        pausedRoutine: paused ? routine : null,
         stack,
         supplementLogs,
         photos,
@@ -213,6 +218,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     state,
     mealPlan: raw?.mealPlan ?? null,
     routineId: raw?.routineId ?? null,
+    pausedRoutine: raw?.pausedRoutine ?? null,
     stack: raw?.stack ?? [],
     supplementLogs: raw?.supplementLogs ?? [],
     photos: raw?.photos ?? [],

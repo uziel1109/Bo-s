@@ -16,6 +16,7 @@ import { realPace } from '@shared/body/realPace';
 import { etaWithBreaks, nearGoal } from '@shared/nutrition/phases';
 import { DayKindBadge } from '../components/PhasesPanel';
 import { ChallengesCard } from '../components/Challenges';
+import { NoTrainingBanner } from '../components/NoTraining';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
@@ -99,6 +100,10 @@ export function Dashboard() {
           </Alert>
         </div>
       )}
+
+      <div className="mb16">
+        <NoTrainingBanner />
+      </div>
 
       {/* Tarjeta principal: progreso hacia el objetivo */}
       <section className="hero" style={{ ['--h1' as string]: 'var(--m-lime)', ['--h2' as string]: 'var(--m-cyan)' }}>

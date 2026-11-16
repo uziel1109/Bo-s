@@ -301,6 +301,22 @@ try {
   check(true, 'Panel de progreso por músculo visible');
   await page.click('[data-testid=nav-dashboard]');
 
+  console.log('▶ Modo sin entrenamiento');
+  const kcalBefore = Number((await page.locator('[data-testid=dash-kcal]').locator('..').textContent()).split('/')[1]?.replace(/\D/g, '') || 0);
+  await page.click('[data-testid=nav-entrenamiento]');
+  await page.click('[data-testid=no-training-open]');
+  await page.waitForSelector('[data-testid=no-training-preview]');
+  await page.click('[data-testid=no-training-confirm]');
+  await page.waitForSelector('[data-testid=no-training-banner]');
+  check((await page.textContent('.page')).includes('está en pausa'), 'Rutina en pausa en modo sin entrenamiento');
+  await page.click('[data-testid=nav-dashboard]');
+  await page.waitForSelector('[data-testid=no-training-banner]');
+  const kcalAfter = Number((await page.locator('[data-testid=dash-kcal]').locator('..').textContent()).split('/')[1]?.replace(/\D/g, '') || 0);
+  check(kcalAfter > 0 && kcalAfter < kcalBefore, `Calorías del día bajan sin entrenar (${kcalBefore} → ${kcalAfter})`);
+  await page.click('[data-testid=no-training-off]');
+  await page.waitForFunction(() => !document.querySelector('[data-testid=no-training-banner]'));
+  check(true, 'Volver a entrenar reactiva la rutina');
+
   console.log('▶ Persistencia al recargar');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });

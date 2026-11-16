@@ -3,7 +3,7 @@
 import type { BodyLog, CardioLog, FoodLog, NutritionTargets, Profile, RecoveryLog, StepsLog, WaterLog, WorkoutSession, Adjustment } from './types';
 import { compositionSnapshot, estimateTdee, type CompositionSnapshot, type TdeeBreakdown } from './body/composition';
 import { simulateAll, recommendedScenario, type ProjectionResult } from './body/projection';
-import { calculateTargets } from './nutrition/targets';
+import { adjustTargetsKcal, calculateTargets } from './nutrition/targets';
 import { calorieFloor, screenProfile, type SafetyFlag } from './safety/screening';
 import { blendedTdee, dailyIntake, observedTdee, weightTrend, type DayIntake, type ObservedTdee } from './analytics/trend';
 import type { Routine } from './training/generator';
@@ -33,6 +33,18 @@ export interface AppData {
   plan: ActivePlan | null;
   adjustments: Adjustment[];
   phases?: PhaseSettings | null;
+  noTraining?: NoTrainingMode | null;
+}
+
+/** Modo sin entrenamiento: sin pesas ni cardio programado; el gasto estimado y las calorías bajan. */
+export interface NoTrainingMode {
+  enabled: boolean;
+  since: string;
+  until?: string | null;
+}
+
+export function noTrainingActive(m: NoTrainingMode | null | undefined, today: string): boolean {
+  return !!m?.enabled && m.since <= today && (!m.until || today <= m.until);
 }
 
 export interface EngineState {
@@ -57,6 +69,7 @@ export interface EngineState {
   intake: Map<string, DayIntake>;
   hydration: HydrationTarget;
   strengthSessionsPerWeek: number;
+  noTraining: { active: boolean; kcalDelta: number; floorLimited: boolean };
 }
 
 function latest<T extends { date: string }>(xs: T[], pick: (x: T) => number | null | undefined): { value: number; date: string } | null {
@@ -93,7 +106,8 @@ export function computeState(data: AppData, today: string): EngineState {
   const initialComposition = compositionSnapshot(p, { weight: initialWeight, waist: p.waistCm, neck: p.neckCm, hip: p.hipCm, measured: p.knownBodyFat && p.knownBodyFatMethod ? { value: p.knownBodyFat, method: p.knownBodyFatMethod } : null });
   composition.progressPct = compositionSnapshot(p, { weight: compWeight, waist, neck, hip, measured }, initialComposition.bf.value).progressPct;
 
-  const strengthSessionsPerWeek = data.routine?.daysPerWeek ?? p.trainingDays.length;
+  const noTrain = noTrainingActive(data.noTraining, today);
+  const strengthSessionsPerWeek = noTrain ? 0 : (data.routine?.daysPerWeek ?? p.trainingDays.length);
   const tdeeFormula = estimateTdee({
     sex: p.sex,
     age: p.age,
@@ -102,15 +116,36 @@ export function computeState(data: AppData, today: string): EngineState {
     bf: composition.bf,
     activity: p.activityLevel,
     strengthSessionsPerWeek,
-    cardioMinutesPerWeek: 60,
+    cardioMinutesPerWeek: noTrain ? 0 : 60,
   });
+  // Gasto que se deja de hacer al no entrenar (según la fórmula con tu rutina habitual).
+  const trainingKcal = noTrain
+    ? estimateTdee({ sex: p.sex, age: p.age, heightCm: p.heightCm, weightKg: compWeight, bf: composition.bf, activity: p.activityLevel, strengthSessionsPerWeek: data.routine?.daysPerWeek ?? p.trainingDays.length, cardioMinutesPerWeek: 60 }).tdee - tdeeFormula.tdee
+    : 0;
   const intake = dailyIntake(data.foodLogs);
   const observed = observedTdee(logs, intake, today);
   const tdee = blendedTdee(tdeeFormula.tdee, observed);
   const recScenario = recommendedScenario(p.sex, composition.bf.value, p.targetBodyFat);
   const scenario = p.scenario ?? recScenario;
   const recommendedTargets = calculateTargets({ profile: p, weightKg: compWeight, bfPct: composition.bf.value, tdee: tdee.tdee, bmr: tdeeFormula.bmr, tdeeMethod: tdee.method, scenario, flags });
-  const targets = data.plan?.targets ?? recommendedTargets;
+  // Con un plan activo (calorías fijas) se resta el gasto del entrenamiento. Conforme se acumulan días sin
+  // entrenar, el gasto observado ya lo refleja, así que el descuento se reduce para no contarlo dos veces.
+  let targets = data.plan?.targets ?? recommendedTargets;
+  let kcalDelta = 0;
+  let floorLimited = false;
+  if (noTrain && data.plan) {
+    const days = Math.max(0, Math.min(28, Math.round((new Date(today + 'T12:00:00').getTime() - new Date(data.noTraining!.since + 'T12:00:00').getTime()) / 86400000)));
+    const effective = trainingKcal * (1 - tdee.weightObserved * (days / 28));
+    const floor = calorieFloor(p.sex);
+    const wanted = Math.round((targets.kcal - effective) / 10) * 10;
+    const next = Math.max(floor, wanted);
+    floorLimited = wanted < floor;
+    kcalDelta = next - targets.kcal;
+    if (kcalDelta < 0) targets = adjustTargetsKcal(targets, next, 'modo sin entrenamiento');
+  } else if (noTrain) {
+    kcalDelta = -Math.round(trainingKcal * (1 - tdee.weightObserved));
+    floorLimited = recommendedTargets.floorApplied;
+  }
   const projections = simulateAll({
     sex: p.sex,
     weightKg: compWeight,
@@ -118,13 +153,13 @@ export function computeState(data: AppData, today: string): EngineState {
     targetBfPct: p.targetBodyFat,
     tdee: tdee.tdee,
     experience: p.experience,
-    resistanceTraining: true,
+    resistanceTraining: !noTrain,
     minCalories: calorieFloor(p.sex),
   });
-  const legWeekdays = legDaysFromRoutine(data.routine, (id) => getExercise(id)?.primary);
+  const legWeekdays = noTrain ? [] : legDaysFromRoutine(data.routine, (id) => getExercise(id)?.primary);
   const dayPlan = dayPlanFor(today, targets, data.phases, { tdee: tdee.tdee, floor: calorieFloor(p.sex), legWeekdays });
   const todayDay = new Date(today + 'T12:00:00').getDay();
-  const trainingToday = data.routine?.days.find((d) => d.weekday === todayDay);
+  const trainingToday = noTrain ? undefined : data.routine?.days.find((d) => d.weekday === todayDay);
   const hydration = hydrationTarget({ ...p, weightKg: compWeight }, trainingToday ? Math.min(p.sessionMinutes, trainingToday.estMinutes) : 0, flags);
   return {
     today,
@@ -148,5 +183,6 @@ export function computeState(data: AppData, today: string): EngineState {
     intake,
     hydration,
     strengthSessionsPerWeek,
+    noTraining: { active: noTrain, kcalDelta, floorLimited },
   };
 }
