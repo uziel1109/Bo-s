@@ -13,8 +13,10 @@ import type { BodyLog } from '@shared/types';
 import { addDays, formatDateShort, round } from '@shared/utils';
 import { api, usePhotoUrl } from '../api';
 import { MonthlyView } from '../components/Monthly';
+import { GhostCamera } from '../components/GhostCamera';
+import { MilestonesView } from '../components/Milestones';
 
-type Tab = 'graficas' | 'mensual' | 'fotos' | 'comparar' | 'estadisticas' | 'recuperacion';
+type Tab = 'graficas' | 'mensual' | 'hitos' | 'fotos' | 'comparar' | 'estadisticas' | 'recuperacion';
 
 export function Progress() {
   const [tab, setTab] = useState<Tab>('graficas');
@@ -27,6 +29,7 @@ export function Progress() {
         tabs={[
           { value: 'graficas', label: 'Gráficas' },
           { value: 'mensual', label: 'Resumen mensual' },
+          { value: 'hitos', label: 'Hitos' },
           { value: 'fotos', label: 'Fotos' },
           { value: 'comparar', label: 'Comparar fotos' },
           { value: 'estadisticas', label: 'Estadísticas' },
@@ -35,6 +38,7 @@ export function Progress() {
       />
       {tab === 'graficas' && <Charts />}
       {tab === 'mensual' && <MonthlyView />}
+      {tab === 'hitos' && <MilestonesView />}
       {tab === 'fotos' && <Photos />}
       {tab === 'comparar' && <Compare />}
       {tab === 'estadisticas' && <Stats />}
@@ -112,7 +116,9 @@ function Photos() {
   const { photos, today, reload, toast } = useApp();
   const [meta, setMeta] = useState({ date: today, pose: 'frente' as PhotoRow['pose'], light: 'luz natural', time: 'mañana en ayunas', clothing: '', distance: '2 m' });
   const [over, setOver] = useState(false);
+  const [cam, setCam] = useState(false);
   const [pose, setPose] = useState<'todas' | PhotoRow['pose']>('todas');
+  const previous = [...photos].filter((p) => p.pose === meta.pose).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
   const metaObj = () => ({ date: meta.date, pose: meta.pose, conditions: { light: meta.light, time: meta.time, clothing: meta.clothing, distance: meta.distance } });
   const byDate = [...photos].filter((p) => pose === 'todas' || p.pose === pose).sort((a, b) => b.date.localeCompare(a.date));
   const dates = [...new Set(byDate.map((p) => p.date))];
@@ -161,7 +167,10 @@ function Photos() {
             await reload();
           }}
         >
-          <Upload /> Arrastra aquí tus fotos o{' '}
+          <button className="btn primary" onClick={() => setCam(true)} data-testid="ghost-open">
+            <Camera /> Tomar con guía
+          </button>
+          <span className="muted">o arrastra aquí tus fotos o</span>
           <button
             className="btn sm"
             onClick={async () => {
@@ -176,9 +185,22 @@ function Photos() {
               }
             }}
           >
-            <Camera /> Seleccionar archivo
+            <Upload /> Seleccionar archivo
           </button>
         </div>
+        {cam && (
+          <GhostCamera
+            pose={meta.pose}
+            previous={previous}
+            meta={metaObj}
+            onClose={() => setCam(false)}
+            onSaved={async () => {
+              setCam(false);
+              await reload();
+              toast('Foto guardada.');
+            }}
+          />
+        )}
         <p className="tiny muted mt8">Consejo: misma hora, luz, distancia, ropa y postura relajada para que las comparaciones sean consistentes.</p>
       </Card>
       <Seg value={pose} onChange={setPose} options={[{ value: 'todas', label: 'Todas' }, { value: 'frente', label: 'Frente' }, { value: 'perfil', label: 'Perfil' }, { value: 'espalda', label: 'Espalda' }]} />

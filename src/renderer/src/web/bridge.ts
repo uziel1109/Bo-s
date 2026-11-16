@@ -17,7 +17,7 @@ type Handler = (...args: never[]) => unknown;
 const today = () => new Date().toISOString().slice(0, 10);
 const IMG_TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic' };
 
-const WRITES = new Set(['db:upsert', 'db:bulkUpsert', 'db:remove', 'db:setActive', 'photos:pick', 'photos:addFile', 'backup:restore', 'import:csv', 'import:csvText', 'import:json', 'data:deleteAll']);
+const WRITES = new Set(['db:upsert', 'db:bulkUpsert', 'db:remove', 'db:setActive', 'photos:pick', 'photos:addFile', 'photos:addBytes', 'backup:restore', 'import:csv', 'import:csvText', 'import:json', 'data:deleteAll']);
 
 export async function createWebBridge() {
   const SQL = await initSqlJs({ locateFile: () => wasmUrl });
@@ -117,7 +117,9 @@ export async function createWebBridge() {
       const p = pickFiles('image/*'); // síncrono dentro del toque
       return p.then((files) => (files[0] ? addPhoto(files[0], meta) : null));
     },
+    'camera:access': async () => true,
     'photos:addFile': (file: File, meta: { date: string; pose: string }) => addPhoto(file, meta),
+    'photos:addBytes': (bytes: Uint8Array, meta: { date: string; pose: string }) => addPhoto(new File([bytes as BlobPart], 'camara.jpg', { type: 'image/jpeg' }), meta),
     'photos:url': async (name: string) => {
       if (urlCache.has(name)) return urlCache.get(name)!;
       const rec = await idbGet<{ iv: Uint8Array; data: Uint8Array }>('photos', name);

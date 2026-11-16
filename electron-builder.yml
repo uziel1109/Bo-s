@@ -18,6 +18,8 @@ nsis:
 mac:
   target: [dmg]
   category: public.app-category.healthcare-fitness
+  extendInfo:
+    NSCameraUsageDescription: BODY OS usa la cámara solo para tomar tus fotos de progreso; se guardan cifradas en este equipo.
 linux:
   target: [AppImage, deb]
   category: Utility

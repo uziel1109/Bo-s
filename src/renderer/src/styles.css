@@ -2452,3 +2452,194 @@ details.supp-group[open] > summary::after {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ── Cámara con guía de silueta */
+.ghost-cam {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #05070a;
+  color: #eef1f5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+}
+.ghost-cam .muted {
+  color: #93a4b8;
+}
+.ghost-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ghost-cam .gym-icon,
+.ghost-cam .gym-btn {
+  color: #eef1f5;
+  border-color: #2a313b;
+}
+.ghost-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000;
+}
+.ghost-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.ghost-overlay {
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.ghost-silhouette {
+  pointer-events: none;
+}
+.ghost-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 140px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+}
+.ghost-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: #ffc53d;
+}
+.ghost-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.ghost-cam .seg {
+  background: #11161d;
+  border-color: #2a313b;
+}
+.ghost-cam .seg button {
+  color: #93a4b8;
+}
+.ghost-cam .seg button.on {
+  background: #222831;
+  color: #fff;
+}
+.ghost-shutter {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: #c8f53c;
+  color: #11140a;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ghost-shutter:disabled {
+  opacity: 0.4;
+}
+.ghost-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.center {
+  text-align: center;
+}
+
+/* ── Celebración de hitos */
+.celebrate-back {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 7, 10, 0.72);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.celebrate-card {
+  position: relative;
+  width: min(440px, 100%);
+  border-radius: 26px;
+  padding: 30px 26px 24px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--cc) 26%, var(--surface)) 0%, var(--surface) 62%);
+  border: 1px solid color-mix(in srgb, var(--cc) 40%, var(--border));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.celebrate-card h2 {
+  margin: 14px 0 6px;
+  font-size: 24px;
+}
+.celebrate-icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  color: #0b0d10;
+  background: var(--cc);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--cc) 18%, transparent), 0 0 50px color-mix(in srgb, var(--cc) 55%, transparent);
+}
+@keyframes pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: fall 2.6s ease-in forwards;
+}
+@keyframes fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(540deg); opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+  .celebrate-card { animation: none; }
+}
+.milestone-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.milestone-row:last-child {
+  border-bottom: 0;
+}
+.milestone-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--cc);
+  background: color-mix(in srgb, var(--cc) 18%, transparent);
+}

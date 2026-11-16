@@ -86,6 +86,8 @@ Nutrición tiene 5 pestañas: *Registro diario*, *Plan y súper* (plan de comida
 
 Gráficas por periodo, fotos cifradas (arrastra o selecciona; registra luz, hora, ropa y distancia), comparación lado a lado (avisa si las condiciones no coinciden), estadísticas y rachas.
 
+- **Fotos con guía:** en Progreso → Fotos toca *Tomar con guía*. La primera vez verás una silueta para encuadrarte de cuerpo completo; las siguientes, tu foto anterior de la misma vista en transparencia para repetir pose, distancia y encuadre (ajusta la transparencia con *Guía*). Usa el temporizador de 5 o 10 s para alejarte. La foto se guarda cifrada en el dispositivo, igual que las demás. En el iPad, permite el acceso a la cámara cuando lo pida.
+- **Hitos:** cuando logras algo importante (primer kilo, 5 % de tu peso, centímetros de cintura, cada punto de grasa menos, tu meta, +10/25/50 % de fuerza en un ejercicio, número de entrenamientos o días seguidos registrando) aparece una celebración. Todos quedan en Progreso → *Hitos*, con la fecha y lo que sigue. El peso usa la tendencia, así que un día de menos agua no cuenta como hito.
 - **Resumen mensual:** en Progreso → *Resumen mensual* verás el cambio de peso (tendencia), cintura y % de grasa del mes, entrenamientos, días registrados y marcas personales. *Guardar imagen* crea una tarjeta lista para guardar en Fotos o compartir.
 - **Retos semanales (Dashboard):** cada lunes se eligen 3 retos según lo que más te costó la semana anterior, con metas un poco por encima de lo que lograste. No cambian durante la semana; cumplir todos suma a tu racha.
 

@@ -33,6 +33,9 @@ export const api = {
   pathForFile: (f: File) => window.bodyos.pathForFile(f),
   /** Agrega una foto desde un archivo arrastrado o seleccionado. */
   addPhotoFile: (f: File, meta: object) => (isWeb() ? inv<Record<string, unknown>>('photos:addFile', f, meta) : inv<Record<string, unknown>>('photos:addFromPath', window.bodyos.pathForFile(f), meta)),
+  cameraAccess: () => inv<boolean>('camera:access'),
+  /** Foto tomada con la cámara de la app (JPEG). */
+  addPhotoBytes: (bytes: Uint8Array, meta: object) => inv<Record<string, unknown>>('photos:addBytes', bytes, meta),
   photoObjectUrl: (fileName: string) => inv<string>('photos:url', fileName),
 };
 

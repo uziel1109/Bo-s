@@ -31,10 +31,17 @@ const check = (c, m) => {
   if (!c) failures++;
 };
 
-const browser = await pw[browserName].launch();
+const browser = await pw[browserName].launch(browserName === 'chromium' ? { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } : {});
 const device = pw.devices['iPad Pro 11 landscape'];
 const context = await browser.newContext({ ...device, acceptDownloads: true, serviceWorkers: 'allow' });
+if (browserName === 'chromium') await context.grantPermissions(['camera']);
 const page = await context.newPage();
+// Los hitos nuevos muestran una celebración a pantalla completa: se cierra sola en la prueba y se cuenta.
+const celebrations = [];
+await page.addLocatorHandler(page.getByTestId('milestone-celebration'), async () => {
+  celebrations.push((await page.getByTestId('milestone-celebration').textContent()).slice(0, 80));
+  await page.click('[data-testid=milestone-ok]');
+});
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
@@ -219,6 +226,32 @@ try {
   await page.click('[data-testid=nav-dashboard]');
   await page.waitForSelector('[data-testid=challenges]');
   check((await page.locator('[data-testid=challenges] .challenge').count()) > 0, `Retos de la semana: ${await page.locator('[data-testid=challenges] .challenge').count()}`);
+
+  console.log('▶ Hitos y fotos con guía');
+  check(celebrations.length > 0, `Celebración de hitos mostrada (${celebrations[0] ?? 'ninguna'})`);
+  await page.click('[data-testid=nav-progreso]');
+  await page.click('.tabs button:has-text("Hitos")');
+  await page.waitForSelector('[data-testid=milestone-list] .milestone-row');
+  check((await page.locator('[data-testid=milestone-list] .milestone-row').count()) > 0, `Línea de tiempo con ${await page.locator('[data-testid=milestone-list] .milestone-row').count()} hitos`);
+  if (browserName === 'chromium') {
+    await page.click('.tabs button:has-text("Fotos")');
+    const before = await page.locator('.photo').count();
+    await page.click('[data-testid=ghost-open]');
+    await page.waitForSelector('[data-testid=ghost-silhouette]');
+    check(true, 'Primera foto: se muestra la silueta de guía');
+    await page.click('.ghost-cam .seg button:has-text("Ya")');
+    await page.waitForFunction(() => document.querySelector('.ghost-cam video')?.videoWidth > 0, null, { timeout: 10000 });
+    await page.click('[data-testid=ghost-shutter]');
+    await page.click('[data-testid=ghost-save]');
+    await page.waitForFunction((n) => document.querySelectorAll('.photo').length > n, before, { timeout: 10000 });
+    check(true, 'Foto tomada con la cámara y guardada cifrada');
+    await page.click('[data-testid=ghost-open]');
+    await page.waitForSelector('[data-testid=ghost-overlay]');
+    check(true, 'Siguiente foto: tu foto anterior aparece como guía');
+    await page.screenshot({ path: path.join(shots, `web-ipad-camara-${browserName}.png`) });
+    await page.click('[aria-label="Cerrar cámara"]');
+  }
+  await page.click('[data-testid=nav-dashboard]');
 
   console.log('▶ Persistencia al recargar');
   await page.reload();

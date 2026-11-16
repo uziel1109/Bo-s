@@ -27,6 +27,7 @@ const check = (cond, msg) => {
 async function launch() {
   const app = await electron.launch({ executablePath: electronPath, args: [path.join(root, 'out/main/index.js'), '--no-sandbox'], env: { ...process.env, BODYOS_USER_DATA: userData } });
   const win = await app.firstWindow();
+  await win.addLocatorHandler(win.getByTestId('milestone-celebration'), async () => win.click('[data-testid=milestone-ok]'));
   const errors = [];
   win.on('pageerror', (e) => errors.push(e.message));
   win.on('console', (m) => m.type() === 'error' && errors.push(m.text()));

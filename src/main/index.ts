@@ -1,5 +1,5 @@
 // Proceso principal de Electron: ventana, base de datos local, fotos cifradas, respaldos, exportación e IA opcional.
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session, shell, systemPreferences } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -107,6 +107,17 @@ function savePhoto(srcPath: string, meta: { date: string; pose: string; conditio
   return db.upsert('photos', { id, date: meta.date, pose: meta.pose, file_name: file, conditions: meta.conditions ?? null, notes: meta.notes ?? null });
 }
 
+/** Foto tomada con la cámara dentro de la app (bytes JPEG). */
+function savePhotoBytes(bytes: Uint8Array, meta: { date: string; pose: string; conditions?: unknown; notes?: string }) {
+  const buf = Buffer.from(bytes);
+  if (buf.length > 25 * 1024 * 1024) throw new Error('La imagen supera 25 MB.');
+  if (!(buf[0] === 0xff && buf[1] === 0xd8)) throw new Error('Formato no admitido.');
+  const id = crypto.randomUUID();
+  const file = `${id}.jpg.enc`;
+  fs.writeFileSync(path.join(photoDir(), file), encryptBytes(photoKey, buf));
+  return db.upsert('photos', { id, date: meta.date, pose: meta.pose, file_name: file, conditions: meta.conditions ?? null, notes: meta.notes ?? null });
+}
+
 function registerIpc() {
   handle('db:list', (table: string, q?: ListQuery) => {
     if (!isTable(table)) throw new Error('Tabla no válida');
@@ -146,6 +157,8 @@ function registerIpc() {
     if (r.canceled || !r.filePaths[0]) return null;
     return savePhoto(r.filePaths[0], meta);
   });
+  handle('camera:access', async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true));
+  handle('photos:addBytes', (bytes: Uint8Array, meta: { date: string; pose: string; conditions?: unknown; notes?: string }) => savePhotoBytes(bytes, meta));
   handle('photos:addFromPath', (srcPath: string, meta: { date: string; pose: string; conditions?: unknown; notes?: string }) => savePhoto(srcPath, meta));
 
   // Respaldos
@@ -251,6 +264,11 @@ function registerIpc() {
 }
 
 app.whenReady().then(async () => {
+  // Solo se permite la cámara (para fotos de progreso); cualquier otro permiso se niega.
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb, details) => {
+    const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
+    cb(permission === 'media' && types.length > 0 && types.every((t) => t === 'video'));
+  });
   protocol.handle('bodyos-photo', async (req) => {
     try {
       const name = decodeURIComponent(new URL(req.url).hostname || new URL(req.url).pathname.replace(/^\/+/, ''));

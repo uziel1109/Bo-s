@@ -4,6 +4,7 @@ import { useStore } from './store';
 import { Toasts } from './components/ui';
 import { AnimDebug } from './components/ExerciseAnimation';
 import { IconTile } from './components/visual';
+import { MilestoneCelebration } from './components/Milestones';
 import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
 import { Body } from './pages/Body';
@@ -112,6 +113,7 @@ export function App() {
       <main className="main">
         <Page key={page} />
       </main>
+      <MilestoneCelebration />
       <Toasts items={store.toasts} />
     </div>
   );
