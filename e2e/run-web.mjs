@@ -111,7 +111,7 @@ try {
   await page.click('[data-testid=photo-save]');
   await page.click('[data-testid=nav-dashboard]');
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'El registro del día se reemplazó por lo detectado');
-  await page.evaluate(() => location.reload());
+  await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
 
   console.log('▶ Ritmo real, recordatorios y calentamiento');
