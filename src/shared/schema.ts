@@ -53,6 +53,7 @@ export const SCHEMA: Record<string, TableSpec> = {
   supplement_logs: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', supplement_key: 'TEXT', name: 'TEXT', dose: 'TEXT' }, indexes: ['date'] },
   photos: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', pose: 'TEXT', file_name: 'TEXT', conditions: 'JSON', notes: 'TEXT' }, indexes: ['date'] },
   calendar_tasks: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', task_key: 'TEXT', title: 'TEXT', type: 'TEXT', done: 'INTEGER', custom: 'INTEGER' }, indexes: ['date'] },
+  meal_ratings: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', meal: 'TEXT', fullness: 'INTEGER', notes: 'TEXT' }, indexes: ['date'] },
   weekly_reports: { pk: 'id', columns: { id: 'TEXT', week_start: 'TEXT', created_at: 'TEXT', data: 'JSON' } },
 };
 

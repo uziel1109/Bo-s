@@ -1856,3 +1856,22 @@ body {
 .mb12 {
   margin-bottom: 12px;
 }
+.mb4 {
+  margin-bottom: 4px;
+}
+.sat-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.sat-dot.on {
+  background: color-mix(in srgb, var(--m-green) 26%, transparent);
+  border-color: var(--m-green);
+  color: var(--text);
+}

@@ -9,7 +9,7 @@ import { AIService } from './ai';
 import { decryptBytes, encryptBytes, loadOrCreatePhotoKey, packBackup, unpackBackup, type KeyStore } from './secure';
 import { SCHEMA, type ListQuery, type TableName } from '../shared/schema';
 import { seedFoods } from '../shared/nutrition/foodsSeed';
-import { syncSeedFoods } from '../shared/nutrition/seedSync';
+import { syncSeedFoods, syncSeedRecipes } from '../shared/nutrition/seedSync';
 import { importJsonTables, importRows, parseCsv, toCsv } from '../shared/dataIO';
 
 // Permite aislar los datos en pruebas automatizadas.
@@ -48,6 +48,7 @@ async function initData() {
   ai = new AIService(dataDir(), keyStore);
   // Base de datos inicial de alimentos (solo la primera vez; no sobrescribe ediciones del usuario).
   syncSeedFoods(db);
+  syncSeedRecipes(db);
   db.flush();
 }
 

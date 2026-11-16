@@ -1,6 +1,7 @@
 // Mantiene al día la base inicial de alimentos sin tocar lo que el usuario creó o editó.
 import type { LocalDB } from '../db/localdb';
 import { LEGACY_SEED_SOURCE, seedFoods } from './foodsSeed';
+import { SEED_RECIPES, SEED_RECIPES_VERSION } from './recipesSeed';
 
 /**
  * - Inserta los alimentos base que falten.
@@ -24,4 +25,18 @@ export function syncSeedFoods(db: LocalDB): { inserted: number; updated: number 
   }
   if (rows.length) db.bulkUpsert('foods', rows);
   return { inserted, updated };
+}
+
+/**
+ * Inserta las recetas incluidas una sola vez por versión: si el usuario borra o edita una, no se vuelve a crear.
+ */
+export function syncSeedRecipes(db: LocalDB): number {
+  const cur = db.get('settings', 'seed_recipes_version') as { value?: unknown } | null;
+  const v = Number(cur?.value ?? 0);
+  if (v >= SEED_RECIPES_VERSION) return 0;
+  const now = new Date().toISOString();
+  const rows = SEED_RECIPES.filter((r) => !db.get('recipes', r.id)).map((r) => ({ ...r, created_at: now }));
+  if (rows.length) db.bulkUpsert('recipes', rows);
+  db.upsert('settings', { key: 'seed_recipes_version', value: SEED_RECIPES_VERSION });
+  return rows.length;
 }

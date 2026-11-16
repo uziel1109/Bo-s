@@ -13,7 +13,12 @@ import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
 import { DayKindBadge, PhasesPanel, useDayTargets } from '../components/PhasesPanel';
 import { IconTile } from '../components/visual';
+import { ChefHat } from 'lucide-react';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
+import { recipeFit, recipePerServing, recipeToMeal, replaceMeal } from '@shared/nutrition/recipeUse';
+import { MealPrepView } from '../components/MealPrep';
+import { SatietyCard, SatietyRating } from '../components/Satiety';
+import type { PlannedMeal } from '@shared/nutrition/mealPlanner';
 import { buildShoppingList, SECTION_ORDER, shoppingListText, type Section, type ShoppingList } from '@shared/nutrition/shopping';
 
 const MEAL_ICON: Record<MealSlot, { icon: typeof Coffee; color: string }> = {
@@ -49,7 +54,7 @@ function MacroRing({ label, value, target, unit, color, big }: { label: string; 
   );
 }
 
-type Tab = 'hoy' | 'plan' | 'super' | 'fases' | 'alimentos' | 'recetas' | 'objetivos';
+type Tab = 'hoy' | 'plan' | 'super' | 'prep' | 'fases' | 'alimentos' | 'recetas' | 'objetivos';
 
 export function Nutrition() {
   const [tab, setTab] = useState<Tab>('hoy');
@@ -63,6 +68,7 @@ export function Nutrition() {
           { value: 'hoy', label: 'Registro diario' },
           { value: 'plan', label: 'Plan de comidas' },
           { value: 'super', label: 'Lista del súper' },
+          { value: 'prep', label: 'Preparación' },
           { value: 'fases', label: 'Fases y eventos' },
           { value: 'alimentos', label: 'Alimentos' },
           { value: 'recetas', label: 'Recetas y frecuentes' },
@@ -72,6 +78,7 @@ export function Nutrition() {
       {tab === 'hoy' && <DailyLog />}
       {tab === 'plan' && <MealPlanView onShopping={() => setTab('super')} />}
       {tab === 'super' && <ShoppingView onPlan={() => setTab('plan')} />}
+      {tab === 'prep' && <MealPrepView onPlan={() => setTab('plan')} />}
       {tab === 'fases' && <PhasesPanel />}
       {tab === 'alimentos' && <FoodDB />}
       {tab === 'recetas' && <Recipes />}
@@ -217,9 +224,11 @@ function DailyLog() {
                 </tbody>
               </table>
             )}
+            {items.length > 0 && slot !== 'extra' && <div className="mt8"><SatietyRating date={date} slot={slot} /></div>}
           </Card>
         );
       })}
+      <SatietyCard />
       {favorites.length > 0 && <p className="small muted">Tienes {favorites.length} comidas frecuentes guardadas: agrégalas desde el botón “Agregar”.</p>}
       {adding && (
         <AddFoodModal
@@ -525,6 +534,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
   const { foods, profile, state: st, mealPlan, reload, toast, today } = useApp();
   const [day, setDay] = useState(0);
   const [subFor, setSubFor] = useState<{ d: number; m: number; i: number; item: PlanItem } | null>(null);
+  const [recipeFor, setRecipeFor] = useState<{ d: number; m: number } | null>(null);
   const pool = filterFoodsForProfile(foods, profile.allergies, profile.excludedFoods);
 
   const generate = async (days: number) => {
@@ -594,7 +604,14 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
       </Card>
       <div className="grid g2">
         {d.meals.map((m, mi) => (
-          <Card key={mi} title={`${MEAL_LABEL[m.slot]} · ${m.title}`} hint={`${fmt(m.totals.kcal)} kcal`} actions={<button className="btn sm" onClick={() => logMeal(d.index, mi)}>Registrar hoy</button>}>
+          <Card key={mi} title={`${MEAL_LABEL[m.slot]} · ${m.title}`} hint={`${fmt(m.totals.kcal)} kcal`} actions={
+              <>
+                <button className="btn sm ghost" onClick={() => setRecipeFor({ d: d.index, m: mi })} title="Cambiar por una receta" data-testid="meal-recipe">
+                  <ChefHat size={14} /> Receta
+                </button>
+                <button className="btn sm" onClick={() => logMeal(d.index, mi)}>Registrar hoy</button>
+              </>
+            }>
             <table className="table">
               <thead>
                 <tr>
@@ -636,6 +653,18 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           </Card>
         ))}
       </div>
+      {recipeFor && (
+        <RecipePicker
+          meal={mealPlan.days[recipeFor.d].meals[recipeFor.m]}
+          onClose={() => setRecipeFor(null)}
+          onPick={async (meal) => {
+            const days = mealPlan.days.map((x) => (x.index === recipeFor.d ? replaceMeal(x, recipeFor.m, meal) : x));
+            await savePlan({ ...mealPlan, days });
+            setRecipeFor(null);
+            toast('Comida cambiada por la receta.');
+          }}
+        />
+      )}
       {mealPlan.notes.map((n, i) => (
         <Alert key={i} kind="warn">
           {n}
@@ -918,15 +947,23 @@ function Recipes() {
       <Card title="Recetas" actions={<button className="btn primary sm" onClick={() => setEdit({ name: '', servings: 1, items: [], notes: null })}><Plus /> Nueva receta</button>}>
         <div className="col">
           {recipes.length === 0 && <Empty>Crea recetas con tus ingredientes para registrarlas por porción.</Empty>}
+          {recipes.length > 0 && <p className="tiny muted">Puedes usarlas en tu plan con el botón "Receta" de cada comida.</p>}
           {recipes.map((r) => {
             const t = tot(r.items);
             return (
               <div className="list-item" key={r.id}>
                 <div className="grow">
-                  <b>{r.name}</b>
+                  <b>{r.name}</b> {r.id.startsWith('rec_seed_') && <span className="badge info">Incluida</span>}
                   <div className="tiny muted">
-                    {r.servings} porciones · por porción: {fmt(t.kcal / r.servings)} kcal · P {fmt(t.protein / r.servings, 1)} g
+                    {r.servings} porciones · por porción: {fmt(t.kcal / r.servings)} kcal · P {fmt(t.protein / r.servings, 1)} g · C {fmt(t.carbs / r.servings, 1)} g · G {fmt(t.fat / r.servings, 1)} g
                   </div>
+                  {r.notes && (
+                    <details className="tiny mt4">
+                      <summary className="muted" style={{ cursor: 'pointer' }}>Ingredientes y preparación</summary>
+                      <div className="mt4">{r.items.map((i) => `${foods.find((f) => f.id === i.foodId)?.name ?? i.foodId}: ${i.grams} g`).join(' · ')}</div>
+                      <div className="mt4" style={{ whiteSpace: 'pre-line' }}>{r.notes}</div>
+                    </details>
+                  )}
                 </div>
                 <button className="btn ghost icon sm" onClick={() => setEdit({ ...r })}>
                   <Pencil />
@@ -1292,5 +1329,44 @@ function ShoppingView({ onPlan }: { onPlan: () => void }) {
         </>
       )}
     </div>
+  );
+}
+
+// ───────────────────────── Cambiar una comida del plan por una receta
+
+function RecipePicker({ meal, onClose, onPick }: { meal: PlannedMeal; onClose: () => void; onPick: (m: PlannedMeal) => void }) {
+  const { recipes, foods } = useApp();
+  const ranked = useMemo(
+    () =>
+      recipes
+        .map((r) => {
+          const per = recipePerServing(r, foods);
+          return { r, per, fit: recipeFit(per, meal.target) };
+        })
+        .sort((a, b) => a.fit.error - b.fit.error),
+    [recipes, foods, meal.target],
+  );
+  return (
+    <Modal title={`Cambiar ${MEAL_LABEL[meal.slot].toLowerCase()} por una receta`} onClose={onClose} wide>
+      <p className="small muted mb12">
+        Objetivo de esta comida: {fmt(meal.target.kcal)} kcal · P {fmt(meal.target.protein)} g. Las porciones se ajustan solas; las mejores opciones aparecen primero.
+      </p>
+      {ranked.length === 0 && <Empty>No tienes recetas. Créalas en "Recetas y frecuentes".</Empty>}
+      <div className="col" style={{ gap: 8 }}>
+        {ranked.map(({ r, per, fit }, i) => (
+          <div key={r.id} className="row between list-row" data-testid="recipe-option">
+            <div className="grow">
+              <b>{r.name}</b> {i < 3 && fit.error < 0.6 && <span className="badge ok">Buen ajuste</span>}
+              <div className="tiny muted">
+                {fit.portions.toLocaleString('es-MX')} porción{fit.portions === 1 ? '' : 'es'} → {fmt(fit.macros.kcal)} kcal · P {fmt(fit.macros.protein)} · C {fmt(fit.macros.carbs)} · G {fmt(fit.macros.fat)} <span className="muted">(1 porción: {fmt(per.kcal)} kcal)</span>
+              </div>
+            </div>
+            <button className="btn sm primary" onClick={() => onPick(recipeToMeal(r, foods, meal.slot, meal.target, fit.portions))}>
+              Usar
+            </button>
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
