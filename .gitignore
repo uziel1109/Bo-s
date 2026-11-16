@@ -6,3 +6,4 @@ dist/
 e2e/.userdata/
 e2e/screens/
 *.tsbuildinfo
+dist-web/

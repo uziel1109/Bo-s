@@ -33,7 +33,7 @@ src/
 │   └── references.ts        bibliografía y limitaciones
 ├── main/              ← PROCESO PRINCIPAL (acceso a disco, red, cifrado)
 │   ├── index.ts             ventana, IPC, fotos, respaldos, exportación, código de barras
-│   ├── db.ts                SQLite: migraciones, CRUD validado, guardado atómico
+│   ├── db.ts                LocalDB persistida en archivo (guardado atómico)
 │   ├── secure.ts            cifrado de fotos y respaldos (AES-256-GCM, scrypt)
 │   └── ai.ts                IA opcional (clave cifrada con safeStorage)
 ├── preload/           ← puente seguro (contextIsolation, sin nodeIntegration)
@@ -49,6 +49,18 @@ e2e/                   ← prueba E2E de la app real (Playwright + Electron)
 ```
 
 **Flujo de datos:** la interfaz pide filas al proceso principal (`db:list`, `db:upsert`…), que valida tabla y columnas contra `shared/schema.ts`. El estado derivado (composición, objetivos, proyecciones, recomendaciones) se calcula con funciones puras de `shared/`, por lo que es reproducible y comprobable.
+
+## Versión web (iPad)
+
+Electron no existe en iPadOS, así que la misma interfaz se compila también como **PWA** (`vite.web.config.ts` → `dist-web/`, publicada en GitHub Pages por `.github/workflows/pages.yml`).
+
+- `src/renderer/src/web/bridge.ts` implementa en el navegador **los mismos canales** que el proceso principal (`db:*`, `photos:*`, `backup:*`, `export:*`, `import:*`, `ai:*`…), de modo que las páginas no cambian. `main.tsx` lo instala si no existe el puente de Electron.
+- La base de datos es la misma clase `LocalDB` (`src/shared/db/localdb.ts`) con sql.js; en web se persiste en **IndexedDB** en lugar de un archivo.
+- Fotos cifradas con **Web Crypto** (AES-GCM, clave no exportable en IndexedDB).
+- Respaldos con el códec común `src/shared/backupCodec.ts` (gzip + PBKDF2-SHA256 + AES-256-GCM): un respaldo hecho en la computadora se restaura en el iPad y viceversa. El escritorio sigue leyendo el formato antiguo (scrypt).
+- Importación/exportación compartida en `src/shared/dataIO.ts`; la exportación CSV se entrega como ZIP.
+- `public/sw.js` guarda en caché los archivos de la app para abrirla sin conexión; los datos nunca pasan por el service worker.
+- La CSP de la web solo permite conexiones a Open Food Facts y a la API de Anthropic (ambas opcionales).
 
 ## Base de datos
 

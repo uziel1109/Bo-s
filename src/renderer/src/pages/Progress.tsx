@@ -10,7 +10,7 @@ import { bestE1rm, exerciseHistory } from '@shared/training/progression';
 import { getExercise } from '@shared/training/exercises';
 import type { BodyLog } from '@shared/types';
 import { addDays, formatDateShort, round } from '@shared/utils';
-import { api, photoUrl } from '../api';
+import { api, usePhotoUrl } from '../api';
 
 type Tab = 'graficas' | 'fotos' | 'comparar' | 'estadisticas' | 'recuperacion';
 
@@ -149,7 +149,7 @@ function Photos() {
             const files = Array.from(e.dataTransfer.files);
             for (const f of files) {
               try {
-                await api.addPhotoFromPath(api.pathForFile(f), metaObj());
+                await api.addPhotoFile(f, metaObj());
               } catch (err) {
                 toast(err instanceof Error ? err.message : String(err), 'error');
               }
@@ -187,7 +187,7 @@ function Photos() {
               .filter((p) => p.date === d)
               .map((p) => (
                 <div className="photo" key={p.id}>
-                  <img src={photoUrl(p.file_name)} alt={`${p.pose} ${p.date}`} loading="lazy" />
+                  <PhotoImg file={p.file_name} alt={`${p.pose} ${p.date}`} />
                   <div className="cap row between">
                     <span className="cap-first">{p.pose}</span>
                     <button
@@ -253,7 +253,7 @@ function Compare() {
           <Card key={i} title={formatDateShort(d)} hint={w?.weight ? `${fmt(w.weight, 1)} kg${w.waist ? ` · cintura ${fmt(w.waist, 1)} cm` : ''}` : undefined}>
             {p ? (
               <div className="photo" style={{ aspectRatio: '3/4' }}>
-                <img src={photoUrl(p.file_name)} alt={`${pose} ${d}`} />
+                <PhotoImg file={p.file_name} alt={`${pose} ${d}`} />
               </div>
             ) : (
               <Empty>Sin foto de {pose} en esta fecha.</Empty>
@@ -375,4 +375,9 @@ function Recovery() {
       <p className="small muted">Dormir 7–9 h es uno de los factores más importantes para conservar músculo en déficit.</p>
     </div>
   );
+}
+
+function PhotoImg({ file, alt }: { file: string; alt: string }) {
+  const src = usePhotoUrl(file);
+  return src ? <img src={src} alt={alt} loading="lazy" /> : <div className="empty" style={{ height: '100%' }}>Cargando…</div>;
 }

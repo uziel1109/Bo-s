@@ -27,12 +27,27 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <StoreProvider>
-        <App />
-      </StoreProvider>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+async function boot() {
+  // Sin el puente de Electron estamos en la versión web (iPad/navegador): se crea el puente local.
+  if (!window.bodyos) {
+    const { createWebBridge } = await import('./web/bridge');
+    try {
+      window.bodyos = await createWebBridge();
+    } catch (e) {
+      document.getElementById('root')!.innerHTML = `<div style="padding:32px;font-family:system-ui;color:#eee">No se pudo iniciar el almacenamiento local de este navegador: ${(e as Error).message}</div>`;
+      return;
+    }
+    if ('serviceWorker' in navigator && import.meta.env.PROD) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <StoreProvider>
+          <App />
+        </StoreProvider>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+}
+
+boot();

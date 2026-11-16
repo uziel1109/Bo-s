@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 // Acceso tipado al proceso principal.
 import type { ListQuery, TableName } from '@shared/schema';
 
@@ -26,9 +27,28 @@ export const api = {
   aiClearKey: () => inv<void>('ai:clearKey'),
   aiChat: (q: string, ctx: string, history: { role: 'user' | 'assistant'; content: string }[]) => inv<string>('ai:chat', q, ctx, history),
   aiFoodPhoto: (names: string[]) => inv<{ items: { name: string; grams: number; matchName: string | null }[]; note: string } | null>('ai:foodPhoto', names),
-  info: () => inv<{ version: string; dataDir: string; photoEncryption: string; platform: string }>('app:info'),
+  info: () => inv<{ version: string; dataDir: string; photoEncryption: string; platform: string; persisted?: boolean }>('app:info'),
   openDataFolder: () => inv<string>('app:openDataFolder'),
   pathForFile: (f: File) => window.bodyos.pathForFile(f),
+  /** Agrega una foto desde un archivo arrastrado o seleccionado. */
+  addPhotoFile: (f: File, meta: object) => (isWeb() ? inv<Record<string, unknown>>('photos:addFile', f, meta) : inv<Record<string, unknown>>('photos:addFromPath', window.bodyos.pathForFile(f), meta)),
+  photoObjectUrl: (fileName: string) => inv<string>('photos:url', fileName),
 };
 
+export const isWeb = () => window.bodyos?.platform === 'web';
+
 export const photoUrl = (fileName: string) => `bodyos-photo://${encodeURIComponent(fileName)}`;
+
+/** URL de una foto: protocolo interno en escritorio; objeto descifrado en memoria en la versión web. */
+export function usePhotoUrl(fileName: string): string {
+  const [url, setUrl] = useState(() => (isWeb() ? '' : photoUrl(fileName)));
+  useEffect(() => {
+    if (!isWeb()) return;
+    let alive = true;
+    api.photoObjectUrl(fileName).then((u) => alive && setUrl(u)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [fileName]);
+  return url;
+}

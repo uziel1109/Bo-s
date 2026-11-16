@@ -101,7 +101,7 @@ export function App() {
           </div>
         ))}
         <div className="sidebar-foot">
-          Datos guardados solo en este equipo.
+          Datos guardados solo en este dispositivo.
           <br />
           No sustituye la valoración médica.
         </div>

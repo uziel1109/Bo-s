@@ -1,5 +1,9 @@
 # Manual de usuario de BODY OS
 
+## 0. Instalar en iPad
+
+Abre https://uziel1109.github.io/Bo-s/ en Safari → **Compartir** → **Agregar a pantalla de inicio**. Abre la app desde su ícono. Si ya usas BODY OS en tu computadora, crea allí un respaldo, guárdalo en iCloud Drive o envíalo al iPad, y en el primer paso del asistente toca **Restaurar un respaldo**.
+
 ## 1. Primer inicio
 
 Al abrir BODY OS por primera vez aparece el **asistente de configuración** (6 pasos). Los valores iniciales son provisionales: reemplázalos con tus datos.

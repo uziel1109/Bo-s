@@ -1158,3 +1158,52 @@ textarea.input {
 .cap-first::first-letter {
   text-transform: uppercase;
 }
+
+/* ───────── iPad / pantallas táctiles (versión web instalable) */
+.app,
+.onb {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.app {
+  box-sizing: border-box;
+}
+.sidebar {
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+.toasts {
+  bottom: calc(20px + env(safe-area-inset-bottom));
+}
+@media (pointer: coarse) {
+  .input,
+  select.input,
+  textarea.input {
+    font-size: 16px;
+    height: 42px;
+  }
+  .btn {
+    min-height: 40px;
+  }
+  .btn.sm {
+    min-height: 34px;
+  }
+  .nav-item {
+    padding: 11px 12px;
+  }
+  .set-grid .input {
+    height: 40px;
+  }
+  .set-done {
+    width: 40px;
+    height: 40px;
+  }
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+@media (max-width: 1250px) and (min-width: 861px) {
+  .g5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

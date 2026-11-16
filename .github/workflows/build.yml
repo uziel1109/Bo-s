@@ -19,6 +19,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: xvfb-run -a npm run test:e2e
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:web
+      - run: BROWSER=webkit node e2e/run-web.mjs
 
   installers:
     needs: test

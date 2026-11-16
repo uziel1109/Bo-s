@@ -9,7 +9,7 @@ import { adjustTargetsKcal } from '@shared/nutrition/targets';
 import { MUSCLE_LABEL, getExercise } from '@shared/training/exercises';
 import type { Adjustment, Claim, Muscle } from '@shared/types';
 import { addDays, formatDateShort, uid, weekStart } from '@shared/utils';
-import { api } from '../api';
+import { api, isWeb } from '../api';
 
 type Tab = 'asistente' | 'semanal' | 'ajustes' | 'config';
 
@@ -316,7 +316,7 @@ function AIConfig() {
             Todas las funciones esenciales funcionan sin conexión con el asistente local. Si lo deseas, puedes activar un modelo de lenguaje externo para preguntas libres y para estimar alimentos a partir de una foto.
           </p>
           {!cfg.secureStorage && <Alert kind="warn">El llavero del sistema no está disponible en este equipo, por lo que no es posible guardar una clave API de forma segura.</Alert>}
-          <Field label="Clave API" help={cfg.hasKey ? 'Hay una clave guardada (cifrada con el llavero del sistema). Nunca se muestra ni se incluye en el código.' : 'Se guarda cifrada en este equipo.'}>
+          <Field label="Clave API" help={isWeb() ? 'En la versión web la clave se guarda en el almacenamiento de este navegador (no hay llavero del sistema disponible) y las consultas salen directamente de este dispositivo a Anthropic. Úsala solo en un dispositivo personal.' : cfg.hasKey ? 'Hay una clave guardada (cifrada con el llavero del sistema). Nunca se muestra ni se incluye en el código.' : 'Se guarda cifrada en este equipo.'}>
             <div className="row nowrap">
               <input className="input" type="password" placeholder={cfg.hasKey ? '••••••••••••' : 'sk-ant-…'} value={key} onChange={(e) => setKey(e.target.value)} />
               <button

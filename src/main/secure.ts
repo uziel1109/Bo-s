@@ -46,45 +46,43 @@ export function decryptBytes(key: Buffer, data: Buffer): Buffer {
   return Buffer.concat([d.update(data.subarray(o + 28)), d.final()]);
 }
 
-export interface BackupPayload {
-  format: 'bodyos-backup';
-  version: number;
-  createdAt: string;
-  db: string; // base64
-  photos: Record<string, string>; // nombre → base64 (descifrado)
+import { backupKind, packBackup as packShared, unpackBackup as unpackShared, type BackupPayload } from '../shared/backupCodec';
+export type { BackupPayload };
+
+/** Respaldo en el formato común (PBKDF2 + AES-256-GCM), compatible con la versión web/iPad. */
+export async function packBackup(payload: BackupPayload, password: string | null): Promise<Buffer> {
+  return Buffer.from(await packShared(payload, password));
 }
 
-export function packBackup(payload: BackupPayload, password: string | null): Buffer {
-  const json = Buffer.from(JSON.stringify(payload));
-  const gz = zlib.gzipSync(json);
-  if (!password) return Buffer.concat([Buffer.from('BODYOS-BK0'), gz]);
+/** Lee el formato común y, por compatibilidad, el formato antiguo BK1 (scrypt). */
+export async function unpackBackup(buf: Buffer, password: string | null): Promise<BackupPayload> {
+  if (backupKind(buf) !== 'v1') return unpackShared(new Uint8Array(buf), password);
+  if (!password) throw new Error('Este respaldo está protegido con contraseña.');
+  let o = MAGIC_BACKUP.length;
+  const salt = buf.subarray(o, (o += 16));
+  const iv = buf.subarray(o, (o += 12));
+  const tag = buf.subarray(o, (o += 16));
+  const key = crypto.scryptSync(password, salt, 32, { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+  const d = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  d.setAuthTag(tag);
+  let gz: Buffer;
+  try {
+    gz = Buffer.concat([d.update(buf.subarray(o)), d.final()]);
+  } catch {
+    throw new Error('Contraseña incorrecta o archivo dañado.');
+  }
+  const payload = JSON.parse(zlib.gunzipSync(gz).toString()) as BackupPayload;
+  if (payload.format !== 'bodyos-backup') throw new Error('Formato de respaldo desconocido.');
+  return payload;
+}
+
+/** Solo para pruebas de compatibilidad: genera un respaldo en el formato antiguo BK1. */
+export function packLegacyV1(payload: BackupPayload, password: string): Buffer {
+  const gz = zlib.gzipSync(Buffer.from(JSON.stringify(payload)));
   const salt = crypto.randomBytes(16);
   const key = crypto.scryptSync(password, salt, 32, { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
   const iv = crypto.randomBytes(12);
   const c = crypto.createCipheriv('aes-256-gcm', key, iv);
   const enc = Buffer.concat([c.update(gz), c.final()]);
   return Buffer.concat([MAGIC_BACKUP, salt, iv, c.getAuthTag(), enc]);
-}
-
-export function unpackBackup(buf: Buffer, password: string | null): BackupPayload {
-  let gz: Buffer;
-  if (buf.subarray(0, 10).toString() === 'BODYOS-BK0') gz = buf.subarray(10);
-  else if (buf.subarray(0, MAGIC_BACKUP.length).equals(MAGIC_BACKUP)) {
-    if (!password) throw new Error('Este respaldo está protegido con contraseña.');
-    let o = MAGIC_BACKUP.length;
-    const salt = buf.subarray(o, (o += 16));
-    const iv = buf.subarray(o, (o += 12));
-    const tag = buf.subarray(o, (o += 16));
-    const key = crypto.scryptSync(password, salt, 32, { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
-    const d = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    d.setAuthTag(tag);
-    try {
-      gz = Buffer.concat([d.update(buf.subarray(o)), d.final()]);
-    } catch {
-      throw new Error('Contraseña incorrecta o archivo dañado.');
-    }
-  } else throw new Error('El archivo no es un respaldo de BODY OS.');
-  const payload = JSON.parse(zlib.gunzipSync(gz).toString()) as BackupPayload;
-  if (payload.format !== 'bodyos-backup') throw new Error('Formato de respaldo desconocido.');
-  return payload;
 }

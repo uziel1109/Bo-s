@@ -23,7 +23,18 @@ Sistema de escritorio para la transformación corporal: pérdida de grasa sosten
 
 ## Instalación
 
-### Opción A — Instalador (recomendado)
+### En iPad (versión web instalable)
+
+1. Abre **https://uziel1109.github.io/Bo-s/** en **Safari**.
+2. Toca **Compartir** (□↑) → **Agregar a pantalla de inicio** → **Agregar**.
+3. Abre BODY OS desde su ícono: se ejecuta a pantalla completa y funciona sin conexión.
+
+- Tus datos se guardan **solo en el iPad** (IndexedDB del navegador); la página únicamente descarga el programa.
+- Instalarla en la pantalla de inicio evita que Safari borre los datos por inactividad. Aun así, crea **respaldos** con regularidad (Configuración → Datos y respaldos) y guárdalos en Archivos o iCloud Drive.
+- Para pasar tus datos de la computadora al iPad (o al revés): crea un respaldo en uno y, en el otro, usa **Restaurar un respaldo** (también disponible en el primer paso del asistente).
+- Diferencias con el escritorio: la clave de la IA externa se guarda en el navegador (no hay llavero del sistema) y las fotos se eligen desde la fototeca o Archivos.
+
+### En computadora — Opción A: instalador (recomendado)
 
 Cada `push` al repositorio ejecuta el flujo **Pruebas e instaladores** en GitHub Actions, que genera:
 
@@ -33,7 +44,7 @@ Cada `push` al repositorio ejecuta el flujo **Pruebas e instaladores** en GitHub
 
 Descárgalos desde la pestaña **Actions** → ejecución más reciente → **Artifacts**.
 
-### Opción B — Desde el código fuente
+### En computadora — Opción B: desde el código fuente
 
 Requisitos: [Node.js 20 o 22](https://nodejs.org/) y Git.
 
@@ -50,6 +61,7 @@ Generar tu propio instalador en tu sistema operativo:
 npm run dist:win     # en Windows → dist/*.exe
 npm run dist:mac     # en macOS   → dist/*.dmg
 npm run dist:linux   # en Linux   → dist/*.AppImage y *.deb
+npm run build:web    # versión web/iPad → dist-web/ (sitio estático)
 ```
 
 ## Pruebas
@@ -59,9 +71,12 @@ npm test             # 65 pruebas unitarias (cálculos, base de datos, cifrado, 
 npm run typecheck    # verificación de tipos
 npm run test:e2e     # prueba de extremo a extremo con la app Electron real
                      # (en Linux sin pantalla: xvfb-run -a npm run test:e2e)
+npm run test:web     # versión web emulando un iPad (BROWSER=webkit para el motor de Safari)
 ```
 
 La prueba E2E recorre: configuración inicial → registro de peso → registro de comida (verifica que 200 g de pechuga = 330 kcal en el panel) → plan de comidas → sesión de entrenamiento → hidratación → todas las secciones → modo claro → **reinicio de la app y verificación de que todo persiste**.
+
+La prueba web (iPad, horizontal y vertical) verifica además: persistencia al recargar, respaldo descargado → eliminar todo → restaurar desde el asistente, apertura **sin conexión** y ausencia de desplazamiento horizontal.
 
 ## Datos y privacidad
 

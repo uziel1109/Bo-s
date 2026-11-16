@@ -6,7 +6,7 @@ import { HealthSection, MeasuresSection, NutritionSection, PersonalSection, Trai
 import { validateProfile } from '@shared/profileDefaults';
 import type { Profile } from '@shared/types';
 import { REFERENCES, LIMITATIONS } from '@shared/references';
-import { api } from '../api';
+import { api, isWeb } from '../api';
 
 type Tab = 'perfil' | 'apariencia' | 'datos' | 'privacidad' | 'referencias';
 
@@ -104,7 +104,7 @@ function DataTools() {
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [rpw, setRpw] = useState('');
-  const [info, setInfo] = useState<{ version: string; dataDir: string; photoEncryption: string } | null>(null);
+  const [info, setInfo] = useState<{ version: string; dataDir: string; photoEncryption: string; persisted?: boolean } | null>(null);
   useEffect(() => {
     api.info().then(setInfo).catch(() => null);
   }, []);
@@ -119,7 +119,7 @@ function DataTools() {
   return (
     <div className="grid g2">
       <Card title="Copia de seguridad completa" icon={<HardDriveDownload />}>
-        <p className="small muted mb16">Incluye la base de datos y todas tus fotos. Con contraseña, el archivo se cifra (AES-256-GCM); sin ella, cualquiera con el archivo podría leerlo.</p>
+        <p className="small muted mb16">Incluye la base de datos y todas tus fotos. Con contraseña, el archivo se cifra (AES-256-GCM); sin ella, cualquiera con el archivo podría leerlo. El mismo archivo sirve para pasar tus datos entre la computadora y el iPad.</p>
         <div className="grid g2">
           <Field label="Contraseña (recomendada)">
             <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
@@ -218,9 +218,15 @@ function DataTools() {
           {info?.dataDir}
         </p>
         <p className="tiny muted mt8">Fotos: cifradas · {info?.photoEncryption}. Versión {info?.version}.</p>
-        <button className="btn mt8" onClick={() => api.openDataFolder()}>
-          <FolderOpen /> Abrir carpeta
-        </button>
+        {isWeb() ? (
+          <Alert kind={info?.persisted ? 'info' : 'warn'}>
+            {info?.persisted ? 'El navegador marcó tus datos como persistentes.' : 'El navegador no confirmó el almacenamiento persistente.'} En iPad, instala la app con Compartir → «Agregar a pantalla de inicio» para que Safari no borre los datos por inactividad, y crea respaldos con regularidad (guárdalos en Archivos o iCloud Drive). Borrar los datos de Safari o desinstalar la app elimina tu información.
+          </Alert>
+        ) : (
+          <button className="btn mt8" onClick={() => api.openDataFolder()}>
+            <FolderOpen /> Abrir carpeta
+          </button>
+        )}
       </Card>
       <Card title="Eliminar todos los datos" icon={<Trash2 />}>
         <p className="small muted mb16">Borra perfil, registros, fotos, planes y ajustes de este equipo. No se puede deshacer (los respaldos que hayas creado no se ven afectados).</p>
@@ -245,8 +251,8 @@ function Privacy() {
     <Card title="Privacidad y seguridad">
       <Claims
         items={[
-          { kind: 'dato', text: 'Toda tu información (perfil, registros, fotos) se guarda localmente en este equipo, en una base de datos SQLite en la carpeta de datos de la aplicación.' },
-          { kind: 'dato', text: 'Las fotografías se guardan cifradas (AES-256-GCM) y sin modificaciones; la clave se protege con el llavero del sistema cuando está disponible.' },
+          { kind: 'dato', text: isWeb() ? 'Toda tu información (perfil, registros, fotos) se guarda localmente en este dispositivo, en el almacenamiento interno del navegador (IndexedDB). La página solo descarga el programa; nunca recibe tus datos.' : 'Toda tu información (perfil, registros, fotos) se guarda localmente en este equipo, en una base de datos SQLite en la carpeta de datos de la aplicación.' },
+          { kind: 'dato', text: isWeb() ? 'Las fotografías se guardan cifradas (AES-256-GCM) y sin modificaciones, con una clave no exportable que solo existe en este dispositivo.' : 'Las fotografías se guardan cifradas (AES-256-GCM) y sin modificaciones; la clave se protege con el llavero del sistema cuando está disponible.' },
           { kind: 'dato', text: 'BODY OS no comparte información con terceros ni tiene analíticas o telemetría.' },
           { kind: 'dato', text: 'Solo hay dos funciones que usan internet, y ambas son opcionales: la búsqueda por código de barras (envía únicamente el número del código a Open Food Facts) y la IA externa (envía el resumen que puedes revisar en Inteligencia artificial → Configuración de IA, y solo si la activas).' },
           { kind: 'recomendacion', text: 'Protege tus respaldos con contraseña y guárdalos en un lugar seguro.' },

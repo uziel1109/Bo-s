@@ -8,6 +8,7 @@ const invoke = async (channel: string, ...args: unknown[]) => {
 };
 
 const api = {
+  platform: 'desktop' as const,
   invoke,
   pathForFile: (f: File) => webUtils.getPathForFile(f),
 };

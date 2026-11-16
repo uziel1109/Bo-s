@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import initSqlJs from 'sql.js';
-import { LocalDB } from './db';
+import { openFileDB, type LocalDB } from './db';
 import { AIService } from './ai';
 import { decryptBytes, encryptBytes, loadOrCreatePhotoKey, packBackup, unpackBackup, type KeyStore } from './secure';
 import { SCHEMA, type ListQuery, type TableName } from '../shared/schema';
 import { seedFoods } from '../shared/nutrition/foodsSeed';
+import { importJsonTables, importRows, parseCsv, toCsv } from '../shared/dataIO';
 
 // Permite aislar los datos en pruebas automatizadas.
 if (process.env.BODYOS_USER_DATA) app.setPath('userData', process.env.BODYOS_USER_DATA);
@@ -41,7 +42,7 @@ async function initData() {
   const wasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');
   const SQL = await initSqlJs({ wasmBinary: fs.readFileSync(wasmPath.replace('app.asar', 'app.asar.unpacked')) as unknown as ArrayBuffer });
   fs.mkdirSync(photoDir(), { recursive: true });
-  db = new LocalDB(SQL, path.join(dataDir(), 'bodyos.db'));
+  db = openFileDB(SQL, path.join(dataDir(), 'bodyos.db'));
   photoKey = loadOrCreatePhotoKey(dataDir(), keyStore);
   ai = new AIService(dataDir(), keyStore);
   // Base de datos inicial de alimentos (solo la primera vez; no sobrescribe ediciones del usuario).
@@ -104,51 +105,6 @@ function savePhoto(srcPath: string, meta: { date: string; pose: string; conditio
   return db.upsert('photos', { id, date: meta.date, pose: meta.pose, file_name: file, conditions: meta.conditions ?? null, notes: meta.notes ?? null });
 }
 
-function toCsv(rows: Record<string, unknown>[]): string {
-  if (!rows.length) return '';
-  const cols = Object.keys(rows[0]);
-  const esc = (v: unknown) => {
-    if (v == null) return '';
-    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  return [cols.join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
-}
-
-function parseCsv(text: string): Record<string, string>[] {
-  const rows: string[][] = [];
-  let cur: string[] = [];
-  let field = '';
-  let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (q) {
-      if (ch === '"' && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (ch === '"') q = false;
-      else field += ch;
-    } else if (ch === '"') q = true;
-    else if (ch === ',' || ch === ';') {
-      cur.push(field);
-      field = '';
-    } else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && text[i + 1] === '\n') i++;
-      cur.push(field);
-      rows.push(cur);
-      cur = [];
-      field = '';
-    } else field += ch;
-  }
-  if (field || cur.length) {
-    cur.push(field);
-    rows.push(cur);
-  }
-  const [head, ...body] = rows.filter((r) => r.some((x) => x.trim()));
-  if (!head) return [];
-  return body.map((r) => Object.fromEntries(head.map((h, i) => [h.trim().toLowerCase(), (r[i] ?? '').trim()])));
-}
-
 function registerIpc() {
   handle('db:list', (table: string, q?: ListQuery) => {
     if (!isTable(table)) throw new Error('Tabla no válida');
@@ -197,13 +153,13 @@ function registerIpc() {
     db.flush();
     const photos: Record<string, string> = {};
     for (const f of fs.readdirSync(photoDir())) photos[f] = decryptBytes(photoKey, fs.readFileSync(path.join(photoDir(), f))).toString('base64');
-    fs.writeFileSync(r.filePath, packBackup({ format: 'bodyos-backup', version: 1, createdAt: new Date().toISOString(), db: Buffer.from(db.exportBytes()).toString('base64'), photos }, password || null));
+    fs.writeFileSync(r.filePath, await packBackup({ format: 'bodyos-backup', version: 2, source: 'escritorio', createdAt: new Date().toISOString(), db: Buffer.from(db.exportBytes()).toString('base64'), photos }, password || null));
     return r.filePath;
   });
   handle('backup:restore', async (password: string | null) => {
     const r = await dialog.showOpenDialog(win!, { title: 'Restaurar respaldo', properties: ['openFile'], filters: [{ name: 'Respaldo BODY OS', extensions: ['bodyos'] }] });
     if (r.canceled || !r.filePaths[0]) return null;
-    const payload = unpackBackup(fs.readFileSync(r.filePaths[0]), password || null);
+    const payload = await unpackBackup(fs.readFileSync(r.filePaths[0]), password || null);
     db.replaceWith(new Uint8Array(Buffer.from(payload.db, 'base64')));
     for (const f of fs.readdirSync(photoDir())) fs.rmSync(path.join(photoDir(), f), { force: true });
     for (const [name, b64] of Object.entries(payload.photos)) {
@@ -233,20 +189,13 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { title: 'Importar CSV', properties: ['openFile'], filters: [{ name: 'CSV', extensions: ['csv', 'txt'] }] });
     if (r.canceled || !r.filePaths[0]) return null;
     const rows = parseCsv(fs.readFileSync(r.filePaths[0], 'utf8').replace(/^﻿/, ''));
-    return importRows(kind, rows);
+    return importRows(db, kind, rows);
   });
-  handle('import:csvText', (kind: 'body_logs' | 'food_logs' | 'steps_logs', text: string) => importRows(kind, parseCsv(text)));
+  handle('import:csvText', (kind: 'body_logs' | 'food_logs' | 'steps_logs', text: string) => importRows(db, kind, parseCsv(text)));
   handle('import:json', async () => {
     const r = await dialog.showOpenDialog(win!, { title: 'Importar exportación JSON de BODY OS', properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }] });
     if (r.canceled || !r.filePaths[0]) return null;
-    const parsed = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'));
-    if (!parsed?.tables) throw new Error('El archivo no es una exportación de BODY OS.');
-    let n = 0;
-    for (const [t, rows] of Object.entries(parsed.tables as Record<string, Record<string, unknown>[]>)) {
-      if (!isTable(t) || !Array.isArray(rows) || t === 'photos') continue;
-      n += db.bulkUpsert(t, rows);
-    }
-    return n;
+    return importJsonTables(db, JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')));
   });
 
   handle('data:deleteAll', () => {
@@ -296,53 +245,6 @@ function registerIpc() {
 
   handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir(), photoEncryption: keyStore.isEncryptionAvailable() ? 'Clave protegida por el llavero del sistema' : 'Clave en archivo local con permisos restringidos', platform: process.platform }));
   handle('app:openDataFolder', () => shell.openPath(dataDir()));
-}
-
-function importRows(kind: 'body_logs' | 'food_logs' | 'steps_logs', rows: Record<string, string>[]) {
-  const num = (v?: string) => (v == null || v === '' ? null : Number(v.replace(',', '.')));
-  const okDate = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
-  let n = 0;
-  const errors: string[] = [];
-  rows.forEach((r, i) => {
-    const date = r.date ?? r.fecha;
-    if (!okDate(date)) {
-      errors.push(`Fila ${i + 2}: fecha inválida (usa AAAA-MM-DD).`);
-      return;
-    }
-    if (kind === 'body_logs') {
-      const existing = db.list('body_logs', { where: { date } })[0];
-      const row: Record<string, unknown> = { id: existing?.id ?? crypto.randomUUID(), date };
-      const map: Record<string, string[]> = { weight: ['weight', 'peso'], waist: ['waist', 'cintura'], abdomen: ['abdomen'], neck: ['neck', 'cuello'], chest: ['chest', 'pecho'], hip: ['hip', 'cadera'], arm: ['arm', 'brazo'], thigh: ['thigh', 'muslo'], calf: ['calf', 'pantorrilla'], bf_percent: ['bf_percent', 'grasa'] };
-      for (const [col, keys] of Object.entries(map)) {
-        const k = keys.find((x) => r[x] != null && r[x] !== '');
-        if (k) {
-          const v = num(r[k]);
-          if (v == null || Number.isNaN(v) || v <= 0) {
-            errors.push(`Fila ${i + 2}: valor inválido en ${k}.`);
-            return;
-          }
-          row[col] = v;
-        }
-      }
-      db.upsert('body_logs', { ...(existing ?? {}), ...row });
-    } else if (kind === 'steps_logs') {
-      const s = num(r.steps ?? r.pasos);
-      if (s == null || Number.isNaN(s) || s < 0) {
-        errors.push(`Fila ${i + 2}: pasos inválidos.`);
-        return;
-      }
-      db.upsert('steps_logs', { date, steps: Math.round(s) });
-    } else {
-      const vals = ['grams', 'kcal', 'protein', 'carbs', 'fat'].map((k) => num(r[k]));
-      if (!r.name || vals.some((v) => v == null || Number.isNaN(v) || v < 0)) {
-        errors.push(`Fila ${i + 2}: faltan name, grams, kcal, protein, carbs o fat.`);
-        return;
-      }
-      db.upsert('food_logs', { id: crypto.randomUUID(), date, meal: r.meal || 'extra', name: r.name, grams: vals[0], kcal: vals[1], protein: vals[2], carbs: vals[3], fat: vals[4], fiber: num(r.fiber) ?? 0, created_at: new Date().toISOString() });
-    }
-    n++;
-  });
-  return { imported: n, errors };
 }
 
 app.whenReady().then(async () => {

@@ -8,9 +8,10 @@ import { SCENARIOS } from '@shared/body/projection';
 import { generateRoutine } from '@shared/training/generator';
 import { today, uid, addDays } from '@shared/utils';
 import { HealthSection, MeasuresSection, NutritionSection, PersonalSection, TrainingSection } from '../components/ProfileSections';
-import { Alert, Claims, fmt, Stat } from '../components/ui';
+import { Alert, Claims, Field, fmt, Stat } from '../components/ui';
 import { api } from '../api';
 import { useStore } from '../store';
+import { navigate } from '../App';
 
 const STEPS = ['Información personal', 'Medidas corporales', 'Entrenamiento', 'Nutrición', 'Salud y seguridad', 'Tu plan'];
 
@@ -84,6 +85,8 @@ export function Onboarding() {
         </div>
         {step === 0 && (
           <>
+            <RestoreBox />
+            <div className="mt16" />
             <Alert kind="info">Los valores que ves son provisionales: reemplázalos con tus datos reales.</Alert>
             <div className="mt16">
               <PersonalSection p={p} set={set} />
@@ -195,6 +198,47 @@ export function Onboarding() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+/** Permite empezar desde un respaldo (por ejemplo, para pasar tus datos de la computadora al iPad). */
+function RestoreBox() {
+  const { reload, toast } = useStore();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  if (!open)
+    return (
+      <div className="row between card flat tight">
+        <span className="small">¿Ya usas BODY OS en otro equipo? Puedes empezar con tus datos restaurando un respaldo.</span>
+        <button className="btn sm" onClick={() => setOpen(true)} data-testid="onb-restore-open">
+          Restaurar un respaldo
+        </button>
+      </div>
+    );
+  return (
+    <div className="card flat tight col">
+      <Field label="Contraseña del respaldo (si tiene)">
+        <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+      </Field>
+      <button
+        className="btn primary"
+        style={{ alignSelf: 'flex-start' }}
+        data-testid="onb-restore"
+        onClick={() => {
+          api
+            .backupRestore(pw || null)
+            .then(async (r) => {
+              if (!r) return;
+              await reload();
+              navigate('dashboard');
+              toast('Respaldo restaurado.');
+            })
+            .catch((e) => toast(e instanceof Error ? e.message : String(e), 'error'));
+        }}
+      >
+        Elegir archivo .bodyos
+      </button>
     </div>
   );
 }
