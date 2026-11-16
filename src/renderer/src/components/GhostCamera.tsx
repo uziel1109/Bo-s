@@ -187,18 +187,51 @@ export function GhostCamera({ pose, previous, onClose, onSaved, meta }: { pose: 
   );
 }
 
-/** Silueta genérica de cuerpo completo (frente/espalda o perfil) para la primera foto. */
+/**
+ * Silueta de guía para la primera foto: figura humana de proporciones normales (≈7.5 cabezas), rellena en
+ * semitransparente, ocupando ~80 % del alto para dejar margen arriba de la cabeza y abajo de los pies.
+ * Las líneas punteadas marcan dónde deben quedar la coronilla y los pies en cada foto.
+ */
 function Silhouette({ pose, opacity }: { pose: Pose; opacity: number }) {
   const side = pose === 'perfil';
+  // Cuerpo de frente/espalda (viewBox 200 × 400; coronilla y = 40, pies y = 360)
+  const front = [
+    'M100 40 C90 40 84 49 84 61 C84 73 91 82 100 82 C109 82 116 73 116 61 C116 49 110 40 100 40 Z', // cabeza
+    'M93 80 L93 96 L107 96 L107 80 Z', // cuello
+    // torso: hombros, cintura y cadera
+    'M60 108 C66 99 82 96 100 96 C118 96 134 99 140 108 C143 122 141 140 136 158 C133 170 133 182 136 196 C138 204 137 210 134 214 L66 214 C63 210 62 204 64 196 C67 182 67 170 64 158 C59 140 57 122 60 108 Z',
+    // brazos (manos a media pierna)
+    'M60 110 C53 116 50 130 49 148 C48 168 46 188 45 206 C44 216 45 224 48 230 L57 230 C58 222 58 212 59 200 C61 182 63 164 65 148 Z',
+    'M140 110 C147 116 150 130 151 148 C152 168 154 188 155 206 C156 216 155 224 152 230 L143 230 C142 222 142 212 141 200 C139 182 137 164 135 148 Z',
+    // piernas
+    'M66 212 C68 240 70 270 72 296 C73 318 74 336 74 350 L70 360 L93 360 L94 350 C95 326 96 296 97 266 L99 218 Z',
+    'M134 212 C132 240 130 270 128 296 C127 318 126 336 126 350 L130 360 L107 360 L106 350 C105 326 104 296 103 266 L101 218 Z',
+  ];
+  // Perfil (mirando a la derecha)
+  const profile = [
+    'M102 40 C92 40 86 49 86 61 C86 73 93 82 102 82 C109 82 114 77 116 70 L119 67 L116 62 C116 49 111 40 102 40 Z', // cabeza
+    'M95 80 L95 98 L108 98 L108 80 Z',
+    // torso: pecho al frente, espalda atrás
+    'M88 100 C98 95 112 96 119 104 C124 114 124 130 121 144 C118 158 117 170 118 182 C119 194 120 204 117 214 L83 214 C79 204 80 194 82 184 C84 172 83 160 82 148 C80 132 81 114 88 100 Z',
+    // brazo
+    'M96 106 C104 104 109 112 109 124 C109 146 108 168 107 190 C106 206 105 220 103 230 L95 230 C94 218 94 204 94 190 C93 166 92 144 93 124 Z',
+    // pierna
+    'M84 212 C86 240 88 270 90 298 C91 320 91 338 90 352 L88 360 L118 360 L116 354 L106 350 C107 326 108 296 110 268 L114 214 Z',
+  ];
   return (
-    <svg className="ghost-media ghost-silhouette" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet" style={{ opacity }} aria-hidden data-testid="ghost-silhouette">
-      <g fill="none" stroke="#fff" strokeWidth="1.2" strokeDasharray="3 2" strokeLinejoin="round">
-        {side ? (
-          <path d="M50 14 a9 10 0 1 1 -0.1 0 M47 33 C54 36 58 40 58 50 C59 62 57 72 55 84 C54 96 56 104 55 116 C54 134 56 150 55 166 C55 176 57 182 62 186 L46 186 C46 176 47 166 46 150 C45 134 44 120 44 106 C43 96 41 86 42 74 C42 62 40 50 41 42 C42 36 44 34 47 33 Z M49 44 C47 58 46 72 47 92" />
-        ) : (
-          <path d="M50 14 a9 10 0 1 1 -0.1 0 M44 33 C36 35 31 38 30 46 L26 78 C25 86 24 94 25 102 M56 33 C64 35 69 38 70 46 L74 78 C75 86 76 94 75 102 M44 33 L56 33 M34 46 C35 62 36 74 38 88 C39 98 37 104 37 112 C36 130 38 150 38 166 C38 176 37 182 33 186 L46 186 C46 172 47 158 48 140 L50 120 L52 140 C53 158 54 172 54 186 L67 186 C63 182 62 176 62 166 C62 150 64 130 63 112 C63 104 61 98 62 88 C64 74 65 62 66 46" />
-        )}
-        <line x1="0" y1="186" x2="100" y2="186" strokeDasharray="1 3" />
+    <svg className="ghost-media ghost-silhouette" viewBox="0 0 200 400" preserveAspectRatio="xMidYMid meet" style={{ opacity }} aria-hidden data-testid="ghost-silhouette">
+      <g fill="rgba(255,255,255,0.16)" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round">
+        {(side ? profile : front).map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
+      <g stroke="#c8f53c" strokeWidth="1.2" strokeDasharray="4 4">
+        <line x1="20" y1="40" x2="180" y2="40" />
+        <line x1="20" y1="360" x2="180" y2="360" />
+      </g>
+      <g fill="#c8f53c" fontSize="9" fontFamily="system-ui, sans-serif">
+        <text x="22" y="35">Cabeza aquí</text>
+        <text x="22" y="372">Pies aquí</text>
       </g>
     </svg>
   );
