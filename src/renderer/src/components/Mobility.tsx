@@ -38,7 +38,7 @@ export function MobilityCard({ routine }: { routine: MobilityRoutine }) {
         </button>
       }
     >
-      <div className="grid g2" data-testid="mobility-list">
+      <div className="mobility-grid" data-testid="mobility-list">
         {routine.drills.map((d) => (
           <div key={d.id} className="row nowrap" style={{ gap: 10, alignItems: 'flex-start' }}>
             <ExerciseAnimation animKey={d.anim} size={64} still />

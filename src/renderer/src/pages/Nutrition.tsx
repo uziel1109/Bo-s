@@ -180,7 +180,9 @@ function DailyLog() {
             }
           >
             {items.length === 0 ? (
-              <p className="muted small">Sin alimentos registrados.</p>
+              <button className="empty-add" onClick={() => setAdding(slot)}>
+                <Plus size={15} /> Agregar a {MEAL_LABEL[slot].toLowerCase()}
+              </button>
             ) : (
               <table className="table">
                 <thead>
@@ -604,49 +606,48 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
       </Card>
       <div className="grid g2">
         {d.meals.map((m, mi) => (
-          <Card key={mi} title={`${MEAL_LABEL[m.slot]} · ${m.title}`} hint={`${fmt(m.totals.kcal)} kcal`} actions={
+          <Card
+            key={mi}
+            className="meal-card"
+            title={
+              <span className="row nowrap" style={{ gap: 10 }}>
+                <IconTile icon={MEAL_ICON[m.slot].icon} color={MEAL_ICON[m.slot].color} size={30} />
+                <span style={{ minWidth: 0 }}>
+                  <span className="tiny muted" style={{ display: 'block', fontWeight: 600 }}>{MEAL_LABEL[m.slot]}</span>
+                  <span className="meal-title">{m.title}</span>
+                </span>
+              </span>
+            }
+            actions={
               <>
+                <span className="kcal-pill mono">{fmt(m.totals.kcal)} kcal</span>
                 <button className="btn sm ghost" onClick={() => setRecipeFor({ d: d.index, m: mi })} title="Cambiar por una receta" data-testid="meal-recipe">
                   <ChefHat size={14} /> Receta
                 </button>
                 <button className="btn sm" onClick={() => logMeal(d.index, mi)}>Registrar hoy</button>
               </>
-            }>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Alimento</th>
-                  <th className="right">g</th>
-                  <th className="right">kcal</th>
-                  <th className="right">P</th>
-                  <th className="right">C</th>
-                  <th className="right">G</th>
-                  <th className="right">Fibra</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {m.items.map((it, ii) => (
-                  <tr key={ii}>
-                    <td>
-                      {it.name}
-                      {it.unitHint && <div className="tiny muted">{it.unitHint}</div>}
-                    </td>
-                    <td className="right">{it.grams}</td>
-                    <td className="right">{fmt(it.macros.kcal)}</td>
-                    <td className="right">{fmt(it.macros.protein, 1)}</td>
-                    <td className="right">{fmt(it.macros.carbs, 1)}</td>
-                    <td className="right">{fmt(it.macros.fat, 1)}</td>
-                    <td className="right">{fmt(it.macros.fiber, 1)}</td>
-                    <td className="right">
-                      <button className="btn ghost sm" onClick={() => setSubFor({ d: d.index, m: mi, i: ii, item: it })} title="Sustituir">
-                        <RefreshCw size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            }
+          >
+            <div className="food-rows">
+              {m.items.map((it, ii) => (
+                <div key={ii} className="food-row">
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="food-name">{it.name}</div>
+                    <div className="tiny muted">
+                      <span className="mono">P {fmt(it.macros.protein, 1)} · C {fmt(it.macros.carbs, 1)} · G {fmt(it.macros.fat, 1)}</span>
+                      {it.unitHint && <> · {it.unitHint}</>}
+                    </div>
+                  </div>
+                  <div className="right">
+                    <div className="mono" style={{ fontWeight: 700 }}>{it.grams} g</div>
+                    <div className="tiny muted mono">{fmt(it.macros.kcal)} kcal</div>
+                  </div>
+                  <button className="btn ghost icon sm" onClick={() => setSubFor({ d: d.index, m: mi, i: ii, item: it })} title="Sustituir">
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
             <div className="tiny muted mt8">
               Objetivo de la comida: {m.target.kcal} kcal · P {m.target.protein} · C {m.target.carbs} · G {m.target.fat}
             </div>

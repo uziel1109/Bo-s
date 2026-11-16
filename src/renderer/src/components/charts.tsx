@@ -3,6 +3,11 @@
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Scatter, ComposedChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatDateShort } from '@shared/utils';
 
+/** Etiquetas del eje Y sin decimales largos (evita que se corten): 100.8 → 101, 98.43 → 98.4. */
+/** 12 500 → "12.5k", 1 600 → "1.6k". */
+const compactTick = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 100) / 10}k` : String(Math.round(v)));
+const numTick = (v: number) => (Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
+
 interface TipProps {
   active?: boolean;
   payload?: { name?: string; value?: number | null; color?: string; dataKey?: string; payload?: Record<string, unknown> }[];
@@ -47,7 +52,7 @@ export function WeightTrendChart({ data, height = 240, goal }: { data: { date: s
       <ComposedChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="date" tickFormatter={dateFmt} {...axis} minTickGap={28} />
-        <YAxis domain={[min, max]} {...axis} width={44} />
+        <YAxis domain={[min, max]} {...axis} width={48} tickFormatter={numTick} />
         <Tooltip content={<Tip unit="kg" labelFmt={dateFmt} />} cursor={{ stroke: 'var(--border-strong)' }} />
         <Legend iconType="plainline" wrapperStyle={{ fontSize: 12, color: 'var(--text-2)' }} />
         {goal && <ReferenceLine y={goal} stroke="var(--muted)" strokeDasharray="4 4" label={{ value: `Meta ≈ ${goal} kg`, position: 'insideTopRight', fill: 'var(--muted)', fontSize: 11 }} />}
@@ -67,7 +72,7 @@ export function SimpleLine({ data, dataKey, name, unit, height = 200, color = 'v
       <LineChart data={pts} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="date" tickFormatter={dateFmt} {...axis} minTickGap={28} />
-        <YAxis domain={['auto', 'auto']} {...axis} width={44} />
+        <YAxis domain={['auto', 'auto']} {...axis} width={48} tickFormatter={numTick} />
         <Tooltip content={<Tip unit={unit} labelFmt={dateFmt} />} cursor={{ stroke: 'var(--border-strong)' }} />
         <Line name={name} type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={{ r: 3, strokeWidth: 2, stroke: 'var(--surface)', fill: color }} activeDot={{ r: 5 }} isAnimationActive={false} />
       </LineChart>
@@ -88,7 +93,7 @@ export function ScenarioChart({ series, target, height = 280, metric = 'bf' }: {
       <LineChart data={rows} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="week" {...axis} tickFormatter={(w) => `S${w}`} minTickGap={20} />
-        <YAxis domain={['auto', 'auto']} {...axis} width={44} unit={metric === 'bf' ? '%' : ''} />
+        <YAxis domain={['auto', 'auto']} {...axis} width={52} tickFormatter={numTick} unit={metric === 'bf' ? '%' : ''} />
         <Tooltip content={<Tip unit={metric === 'bf' ? '%' : 'kg'} labelFmt={(l) => `Semana ${l}`} />} cursor={{ stroke: 'var(--border-strong)' }} />
         <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
         {metric === 'bf' && <ReferenceLine y={target} stroke="var(--muted)" strokeDasharray="4 4" label={{ value: `Objetivo ${target} %`, position: 'insideBottomLeft', fill: 'var(--muted)', fontSize: 11 }} />}
@@ -104,12 +109,12 @@ export function ScenarioChart({ series, target, height = 280, metric = 'bf' }: {
 export function SimpleBars({ data, x, y, name, unit, height = 200, color = 'var(--s1)', xFmt, layout = 'horizontal' }: { data: Record<string, unknown>[]; x: string; y: string; name: string; unit?: string; height?: number; color?: string; xFmt?: (v: string | number) => string; layout?: 'horizontal' | 'vertical' }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout={layout} margin={{ top: 8, right: 12, left: layout === 'vertical' ? 30 : -12, bottom: 0 }}>
+      <BarChart data={data} layout={layout} margin={{ top: 8, right: 12, left: layout === 'vertical' ? 30 : 0, bottom: 0 }}>
         <CartesianGrid vertical={layout === 'vertical'} horizontal={layout === 'horizontal'} />
         {layout === 'horizontal' ? (
           <>
             <XAxis dataKey={x} {...axis} tickFormatter={xFmt} minTickGap={6} />
-            <YAxis {...axis} width={44} />
+            <YAxis {...axis} width={44} tickFormatter={compactTick} />
           </>
         ) : (
           <>

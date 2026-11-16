@@ -195,7 +195,7 @@ export function Dashboard() {
         <MetricTile icon={Flame} color="var(--m-orange)" label="Gasto diario estimado" value={fmt(st.tdee.tdee)} unit="kcal" foot={st.observed.tdee ? 'Ajustado con tus datos reales' : 'Por fórmula · se ajustará con tus datos'} />
       </div>
 
-      <div className="grid g3 mb16">
+      <div className="grid g2 mb16">
         {/* Anillos del día */}
         <Card
           title={
@@ -281,13 +281,13 @@ export function Dashboard() {
           </div>
         </Card>
 
+      </div>
+
+      <div className="grid g2 mb16">
         {/* Qué hacer hoy */}
         <Card title="Qué hacer hoy" icon={<Brain />} actions={<button className="btn sm" onClick={() => navigate('ia')}>Asistente</button>}>
           <Claims items={coach.today} />
         </Card>
-      </div>
-
-      <div className="mb16">
         <ChallengesCard />
       </div>
 

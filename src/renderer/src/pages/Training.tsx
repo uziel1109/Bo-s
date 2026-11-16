@@ -18,6 +18,14 @@ import type { Equipment, ExerciseLog, Muscle, SetLog, WorkoutSession } from '@sh
 import { DAY_NAMES, formatDateShort, round, uid } from '@shared/utils';
 import { api } from '../api';
 
+/** Descanso legible: 90 → "1:30 min", 120 → "2 min", 45 → "45 s". */
+function fmtRest(sec: number): string {
+  if (sec < 60) return `${sec} s`;
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return s ? `${m}:${String(s).padStart(2, '0')} min` : `${m} min`;
+}
+
 type Tab = 'sesion' | 'rutina' | 'progresion' | 'musculos' | 'ejercicios' | 'historial';
 
 export function Training() {
@@ -279,7 +287,7 @@ function SessionLogger() {
               <div>
                 <b>{e.name}</b>
                 <div className="tiny muted">
-                  {e.targetSets} × {e.repMin}–{e.repMax} · RIR {e.targetRir} · descanso {rd ? Math.round(rd.restSec / 60 * 10) / 10 : 2} min
+                  {e.targetSets} × {e.repMin}–{e.repMax} · RIR {e.targetRir} · descanso {fmtRest(rd?.restSec ?? 120)}
                   {last && ` · última vez: ${last.sets.filter((s) => s.done).map((s) => `${s.weight}×${s.reps}`).join(', ')}`}
                 </div>
               </div>
@@ -465,7 +473,7 @@ function DayPreview({ day }: { day: RoutineDay }) {
                   RIR <b>{e.rir}</b>
                 </span>
                 <span className="chip-stat">
-                  <Timer size={12} /> {Math.round(e.restSec / 6) / 10} min
+                  <Timer size={12} /> {fmtRest(e.restSec)}
                 </span>
               </span>
             </button>
@@ -636,7 +644,7 @@ function RoutineView() {
                     <td>
                       {e.name}
                       <div className="tiny muted">
-                        {e.repMin}–{e.repMax} reps · RIR {e.rir} · {Math.round(e.restSec / 6) / 10} min
+                        {e.repMin}–{e.repMax} reps · RIR {e.rir} · {fmtRest(e.restSec)}
                       </div>
                     </td>
                     <td className="right" style={{ whiteSpace: 'nowrap' }}>
