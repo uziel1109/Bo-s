@@ -730,6 +730,9 @@ textarea.input {
   border-radius: 99px;
   transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.macro-row > :last-child {
+  white-space: nowrap;
+}
 .macro-row {
   display: grid;
   grid-template-columns: minmax(64px, 96px) minmax(40px, 1fr) auto;

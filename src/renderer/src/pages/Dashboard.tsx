@@ -127,7 +127,8 @@ export function Dashboard() {
       <div className="grid g3 mb16">
         {/* Nutrición */}
         <Card title="Nutrición de hoy" icon={<Sparkles />} actions={<button className="btn sm" onClick={() => navigate('nutricion')} data-testid="dash-go-nutrition"><Plus /> Registrar</button>}>
-          <div className="row nowrap" style={{ gap: 18, alignItems: 'center' }}>
+          <div className="col" style={{ gap: 16 }}>
+            <div className="row" style={{ justifyContent: 'center' }}>
             <Ring value={intake?.kcal ?? 0} max={t.kcal} size={118}>
               <div>
                 <div className="mono" style={{ fontSize: 22, fontWeight: 700 }} data-testid="dash-kcal">
@@ -136,6 +137,7 @@ export function Dashboard() {
                 <div className="tiny muted">de {fmt(t.kcal)} kcal</div>
               </div>
             </Ring>
+            </div>
             <div className="col grow" style={{ gap: 10 }}>
               <MacroBar label="Proteína" color="var(--protein)" value={intake?.protein ?? 0} target={t.protein} />
               <MacroBar label="Carbos" color="var(--carbs)" value={intake?.carbs ?? 0} target={t.carbs} />
