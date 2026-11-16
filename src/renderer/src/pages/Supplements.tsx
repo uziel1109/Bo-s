@@ -11,6 +11,13 @@ import { api } from '../api';
 
 const CLS: Record<SuppClass, string> = { util: 'ok', opcional: 'info', no_necesario: '', valoracion: 'warn' };
 
+const GROUPS: { cls: SuppClass; title: string; sub?: string; color: string; showDose: boolean; showReason: boolean; collapsed?: boolean }[] = [
+  { cls: 'util', title: 'Te pueden servir', color: 'var(--m-green)', showDose: true, showReason: true },
+  { cls: 'valoracion', title: 'Consulta antes a tu médico', color: 'var(--m-amber)', showDose: false, showReason: true },
+  { cls: 'opcional', title: 'Opcionales', sub: 'Pueden ayudar algo, pero no son necesarios.', color: 'var(--m-cyan)', showDose: true, showReason: false },
+  { cls: 'no_necesario', title: 'No los necesitas ahora', color: 'var(--m-slate)', showDose: false, showReason: true, collapsed: true },
+];
+
 export function Supplements() {
   const { data, state: st, profile, today, stack, supplementLogs, reload, toast } = useApp();
   const [tab, setTab] = useState<'analisis' | 'mis' | 'evitar'>('analisis');
@@ -32,42 +39,56 @@ export function Supplements() {
 
   return (
     <div className="page">
-      <Hero module="suplementos" title="Suplementación" sub="Análisis basado en evidencia para tu situación. Ningún suplemento se recomienda por defecto." />
-      <Alert kind="info">Los suplementos son secundarios frente a la alimentación, el entrenamiento y el sueño. Las dosis mostradas son las habitualmente estudiadas, no prescripciones; con cualquier condición médica o medicamento consulta a tu médico.</Alert>
-      <div className="mt16">
+      <Hero module="suplementos" title="Suplementación" sub="Lo que te puede servir según tus datos. Primero van comida, entrenamiento y sueño." />
+      <p className="small muted mb12 tech">Las dosis mostradas son las habitualmente estudiadas, no prescripciones; con cualquier condición médica o medicamento consulta a tu médico.</p>
+      <div>
         <Tabs value={tab} onChange={setTab} tabs={[{ value: 'analisis', label: 'Análisis para ti' }, { value: 'mis', label: 'Lo que tomo' }, { value: 'evitar', label: 'No recomendados' }]} />
       </div>
       {tab === 'analisis' && (
-        <div className="grid g2">
-          {assessments.map((a) => (
-            <Card
-              key={a.supplement.key}
-              title={a.supplement.name}
-              actions={<span className={`badge ${CLS[a.cls]}`}>{CLASS_LABEL[a.cls]}</span>}
-            >
-              <p className="small mb8">{a.supplement.benefit}</p>
-              <ul className="small" style={{ paddingLeft: 18, margin: '8px 0' }}>
-                {a.reasons.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-              <div className="row between mt8">
-                <span className="tiny muted">
-                  Evidencia: {a.supplement.evidenceLevel} {a.personalDose ? `· Dosis de referencia: ${a.personalDose}` : ''}
-                </span>
-                <div className="row">
-                  <button className="btn sm ghost" onClick={() => setOpen(a)}>
-                    Ver detalle
-                  </button>
-                  {(a.cls === 'util' || a.cls === 'opcional') && !stack.some((s) => s.supplement_key === a.supplement.key) && (
+        <div className="col" style={{ gap: 16 }}>
+          {GROUPS.map((g) => {
+            const list = assessments.filter((a) => a.cls === g.cls);
+            if (!list.length) return null;
+            const rows = list.map((a) => {
+              const inStack = stack.some((s) => s.supplement_key === a.supplement.key);
+              return (
+                <div key={a.supplement.key} className="supp-row" data-testid={`supp-${a.supplement.key}`}>
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="row" style={{ gap: 8 }}>
+                      <b>{a.supplement.name}</b>
+                      {g.showDose && (a.personalDose ?? a.supplement.dose) && <span className="supp-dose">{a.personalDose ?? a.supplement.dose}</span>}
+                    </div>
+                    {g.showReason && a.reasons[0] && <div className="small muted supp-reason">{a.reasons[0]}</div>}
+                  </div>
+                  {g.showDose && !inStack && (
                     <button className="btn sm" onClick={() => addToStack(a.supplement.key, a.supplement.name, a.personalDose ?? a.supplement.dose, a.supplement.timing)}>
                       <Plus /> Lo tomo
                     </button>
                   )}
+                  {inStack && <span className="badge ok">En tu lista</span>}
+                  <button className="btn sm ghost" onClick={() => setOpen(a)}>
+                    Detalle
+                  </button>
                 </div>
-              </div>
-            </Card>
-          ))}
+              );
+            });
+            return g.collapsed ? (
+              <details key={g.cls} className="card supp-group">
+                <summary className="supp-head">
+                  <span className="dot" style={{ background: g.color }} /> {g.title} <span className="muted small">({list.length})</span>
+                </summary>
+                <div className="mt8">{rows}</div>
+              </details>
+            ) : (
+              <section key={g.cls} className="card supp-group">
+                <div className="supp-head">
+                  <span className="dot" style={{ background: g.color }} /> {g.title}
+                </div>
+                {g.sub && <p className="tiny muted mb8">{g.sub}</p>}
+                {rows}
+              </section>
+            );
+          })}
         </div>
       )}
       {tab === 'mis' && (
@@ -155,7 +176,7 @@ export function Supplements() {
                 <Ban color="var(--danger)" size={18} />
                 <div>
                   <b>{n.name}</b>
-                  <div className="small muted">{n.why}</div>
+                  <div className="small muted supp-reason">{n.why}</div>
                 </div>
               </div>
             ))}
@@ -176,14 +197,14 @@ export function Supplements() {
                 <span className={`badge ${CLS[open.cls]}`}>{CLASS_LABEL[open.cls]}</span>
               </div>
               <Detail t="Beneficio potencial" v={open.supplement.benefit} />
+              <DetailList t="¿Lo necesitas?" v={open.reasons} />
               <Detail t="Evidencia científica" v={`${open.supplement.evidence} (nivel: ${open.supplement.evidenceLevel})`} />
               <Detail t="Dosis habitual estudiada" v={open.supplement.dose} />
               <Detail t="Momento de consumo" v={open.supplement.timing} />
               <DetailList t="Posibles efectos secundarios" v={open.supplement.sideEffects} />
               <DetailList t="Contraindicaciones" v={open.supplement.contraindications.length ? open.supplement.contraindications : ['Ninguna relevante conocida en adultos sanos.']} />
               <DetailList t="Interacciones con medicamentos" v={open.supplement.interactions} />
-              <DetailList t="¿Lo necesitas?" v={open.reasons} />
-              <div>
+              <div className="tech">
                 <h3 className="mb8">Referencias</h3>
                 {open.supplement.refs.map((k) => {
                   const r = REFERENCES.find((x) => x.key === k);
@@ -198,7 +219,7 @@ export function Supplements() {
           </div>
         </div>
       )}
-      <p className="tiny muted mt16">{SUPPLEMENTS.length} suplementos evaluados.</p>
+      <p className="tiny muted mt16 tech">{SUPPLEMENTS.length} suplementos evaluados.</p>
     </div>
   );
 }
