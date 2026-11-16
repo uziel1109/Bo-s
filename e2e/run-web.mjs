@@ -96,9 +96,16 @@ try {
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]');
   await context.setOffline(true);
-  await page.reload();
-  const offlineOk = await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 15000 }).then(() => true).catch(() => false);
-  check(offlineOk, 'La app abre sin conexión (service worker)');
+  // Se abre una pestaña nueva sin conexión (como abrir la app desde su ícono) en lugar de recargar.
+  const off = await context.newPage();
+  let offlineErr = '';
+  const offlineOk = await off
+    .goto(base)
+    .then(() => off.waitForSelector('[data-testid=dash-kcal]', { timeout: 15000 }))
+    .then(() => true)
+    .catch((e) => ((offlineErr = e.message.split('\n')[0]), false));
+  check(offlineOk, `La app abre sin conexión (service worker)${offlineErr ? ': ' + offlineErr : ''}`);
+  await off.close();
   await context.setOffline(false);
 
   const portrait = await browser.newContext({ ...pw.devices['iPad Pro 11'] });
