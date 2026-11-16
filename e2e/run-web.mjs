@@ -91,12 +91,22 @@ try {
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '330', 'Respaldo restaurado correctamente');
 
+  const portrait = await browser.newContext({ ...pw.devices['iPad Pro 11'] });
+  const pp = await portrait.newPage();
+  await pp.goto(base);
+  await pp.waitForSelector('text=Paso 1 de');
+  check(await pp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'Vertical: sin desplazamiento horizontal');
+  await pp.screenshot({ path: path.join(shots, `web-ipad-vertical-${browserName}.png`) });
+  await portrait.close();
+
   console.log('▶ Sin conexión');
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.reload();
+  await page.goto(base);
   await page.waitForSelector('[data-testid=dash-kcal]');
-  await context.setOffline(true);
-  // Se abre una pestaña nueva sin conexión (como abrir la app desde su ícono) en lugar de recargar.
+  // Corte real: se apaga el servidor (no se usa la simulación de red de Playwright, que en WebKit
+  // bloquea también lo que responde el service worker). La app debe abrir desde la caché.
+  server.closeAllConnections();
+  await new Promise((r) => server.close(r));
   const off = await context.newPage();
   let offlineErr = '';
   const offlineOk = await off
@@ -106,15 +116,6 @@ try {
     .catch((e) => ((offlineErr = e.message.split('\n')[0]), false));
   check(offlineOk, `La app abre sin conexión (service worker)${offlineErr ? ': ' + offlineErr : ''}`);
   await off.close();
-  await context.setOffline(false);
-
-  const portrait = await browser.newContext({ ...pw.devices['iPad Pro 11'] });
-  const pp = await portrait.newPage();
-  await pp.goto(base);
-  await pp.waitForSelector('text=Paso 1 de');
-  check(await pp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'Vertical: sin desplazamiento horizontal');
-  await pp.screenshot({ path: path.join(shots, `web-ipad-vertical-${browserName}.png`) });
-  await portrait.close();
 
   check(errors.length === 0, `Sin errores de página (${errors.slice(0, 3).join(' | ')})`);
 } catch (e) {
@@ -123,7 +124,7 @@ try {
   await page.screenshot({ path: path.join(shots, 'web-failure.png') }).catch(() => {});
 } finally {
   await browser.close();
-  server.close();
+  if (server.listening) server.close();
 }
 console.log(failures ? `\n✘ ${failures} verificaciones fallaron` : '\n✔ Todas las verificaciones web pasaron');
 process.exit(failures ? 1 : 0);
