@@ -62,7 +62,8 @@ export class AIService {
     return claude.chat(this.client(), this.config().model, question, context, history);
   }
 
-  async foodPhoto(imageBase64: string, mediaType: 'image/jpeg' | 'image/png' | 'image/webp', foodNames: string[]) {
-    return claude.foodPhoto(this.client(), this.config().model, imageBase64, mediaType, foodNames);
+  /** Devuelve el texto de la IA; la interfaz lo normaliza y valida (photoAnalysis.ts). */
+  async analyzeFood(imageBase64: string, mediaType: 'image/jpeg' | 'image/png' | 'image/webp', foods: { id: string; name: string }[], planHint?: string): Promise<string> {
+    return claude.analyzeFoodPhoto(this.client(), this.config().model, imageBase64, mediaType, foods, planHint);
   }
 }

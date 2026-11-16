@@ -17,12 +17,22 @@ type Handler = (...args: never[]) => unknown;
 const today = () => new Date().toISOString().slice(0, 10);
 const IMG_TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic' };
 
+const WRITES = new Set(['db:upsert', 'db:bulkUpsert', 'db:remove', 'db:setActive', 'photos:pick', 'photos:addFile', 'backup:restore', 'import:csv', 'import:csvText', 'import:json', 'data:deleteAll']);
+
 export async function createWebBridge() {
   const SQL = await initSqlJs({ locateFile: () => wasmUrl });
   const initial = (await idbGet<Uint8Array>('kv', 'db')) ?? null;
+  // Escrituras encadenadas: cada cambio queda guardado en IndexedDB antes de confirmarse a la interfaz.
+  let pendingSave: Promise<unknown> = Promise.resolve();
   const db = new LocalDB(SQL, initial, (bytes) => {
-    idbPut('kv', 'db', bytes).catch((e) => console.error('No se pudo guardar la base de datos', e));
+    const copy = bytes.slice();
+    pendingSave = pendingSave.then(() => idbPut('kv', 'db', copy)).catch((e) => console.error('No se pudo guardar la base de datos', e));
   });
+  /** Guarda de inmediato y espera a que IndexedDB confirme la escritura. */
+  const durable = async () => {
+    db.flush();
+    await pendingSave;
+  };
   syncSeedFoods(db);
   db.flush();
   // Guardar de inmediato al salir o pasar a segundo plano.
@@ -200,17 +210,10 @@ export async function createWebBridge() {
       const { chat } = await import('@shared/ai/claude');
       return chat(client, model, q, ctx, history);
     },
-    'ai:foodPhoto': (foodNames: string[]) => {
-      const p = pickFiles('image/jpeg,image/png,image/webp');
-      return p.then(async (files) => {
-        const f = files[0];
-        if (!f) return null;
-        if (f.size > 5 * 1024 * 1024) throw new Error('La imagen supera 5 MB; usa una más pequeña.');
-        const mt = f.type === 'image/png' ? 'image/png' : f.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
-        const { client, model } = await aiClient();
-        const { foodPhoto } = await import('@shared/ai/claude');
-        return foodPhoto(client, model, toBase64(new Uint8Array(await f.arrayBuffer())), mt, foodNames);
-      });
+    'ai:analyzeFood': async (b64: string, mt: 'image/jpeg' | 'image/png' | 'image/webp', foods: { id: string; name: string }[], planHint?: string) => {
+      const { client, model } = await aiClient();
+      const { analyzeFoodPhoto } = await import('@shared/ai/claude');
+      return analyzeFoodPhoto(client, model, b64, mt, foods, planHint);
     },
 
     'app:info': async () => ({
@@ -230,7 +233,9 @@ export async function createWebBridge() {
       const h = handlers[channel];
       if (!h) return Promise.reject(new Error(`Canal no disponible en la versión web: ${channel}`));
       try {
-        return Promise.resolve((h as (...a: unknown[]) => unknown)(...args));
+        const res = Promise.resolve((h as (...a: unknown[]) => unknown)(...args));
+        // Para cambios de datos, se responde hasta que el guardado en el dispositivo terminó.
+        return WRITES.has(channel) ? res.then(async (v) => (await durable(), v)) : res;
       } catch (e) {
         return Promise.reject(e);
       }

@@ -37,28 +37,32 @@ export function chat(client: Anthropic, model: string, question: string, context
   return send(client, model, `Datos actuales del usuario (generados por BODY OS):\n${context}\n\nPregunta: ${question}`, history.slice(-10));
 }
 
-export type FoodPhotoResult = { items: { name: string; grams: number; matchName: string | null }[]; note: string };
-
-/** Analiza una foto de comida. Devuelve candidatos que el usuario debe confirmar y editar. */
-export async function foodPhoto(client: Anthropic, model: string, imageBase64: string, mediaType: 'image/jpeg' | 'image/png' | 'image/webp', foodNames: string[]): Promise<FoodPhotoResult> {
-  const text = await send(client, model, [
+/**
+ * Analiza la foto de un plato. La IA identifica el platillo y sus elementos, estima los gramos y,
+ * cuando puede, los asocia a un alimento de la base del usuario (por id). Para lo que no está en la base
+ * da valores aproximados por 100 g. El resultado se normaliza y valida en photoAnalysis.ts.
+ */
+export async function analyzeFoodPhoto(
+  client: Anthropic,
+  model: string,
+  imageBase64: string,
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp',
+  foods: { id: string; name: string }[],
+  planHint?: string,
+): Promise<string> {
+  return send(client, model, [
     { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
     {
       type: 'text',
-      text: `Identifica los alimentos de la foto y estima los gramos de cada uno. Las estimaciones visuales tienen error alto; sé conservador.
-Si un alimento coincide con uno de esta lista, usa su nombre exacto en "matchName"; si no, null:
-${foodNames.join('; ')}
-Responde SOLO con JSON: {"items":[{"name":"...","grams":123,"matchName":"..."|null}],"note":"advertencias breves"}`,
+      text: `Analiza la foto de este plato de comida.
+1. Identifica el platillo (nombre común en México) y cada elemento visible por separado (proteína, guarnición, tortillas, salsa, aceite visible, bebida…).
+2. Estima los gramos de cada elemento tal como se ve servido (cocinado). Usa referencias visuales (tamaño del plato ~26 cm, cubiertos, tortilla ~14 cm). Si dudas, elige un valor intermedio y baja la confianza.
+3. Si el elemento corresponde a un alimento de esta lista, pon su "foodId" exacto (elige la forma de preparación correcta, p. ej. cocido vs crudo); si no corresponde a ninguno, foodId = null y da "per100g" aproximado (kcal, protein, carbs, fat, fiber por 100 g) basado en valores de referencia típicos.
+Lista (id: nombre):
+${foods.map((f) => `${f.id}: ${f.name}`).join('\n')}
+${planHint ? `\nPlan de esta comida (solo como contexto, NO asumas que el plato coincide): ${planHint}` : ''}
+Responde SOLO con JSON válido, sin texto adicional:
+{"dish":"nombre del platillo","items":[{"name":"...","grams":120,"foodId":"id"|null,"per100g":{"kcal":0,"protein":0,"carbs":0,"fat":0,"fiber":0}|null,"confidence":"alta"|"media"|"baja"}],"note":"advertencias breves (aceite oculto, salsas, porción no visible)"}`,
     },
   ]);
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('La respuesta de la IA no tuvo el formato esperado.');
-  const parsed = JSON.parse(m[0]);
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
-  return {
-    items: items
-      .filter((i: { name?: unknown; grams?: unknown }) => typeof i.name === 'string' && Number(i.grams) > 0)
-      .map((i: { name: string; grams: number; matchName?: string | null }) => ({ name: i.name, grams: Math.round(Number(i.grams)), matchName: i.matchName ?? null })),
-    note: typeof parsed.note === 'string' ? parsed.note : '',
-  };
 }

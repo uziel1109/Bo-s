@@ -1709,3 +1709,46 @@ body {
 .shop-item.done .shop-qty {
   opacity: 0.5;
 }
+
+/* Foto de comida */
+.photo-analyze {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.photo-analyze img {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  max-height: 260px;
+}
+@media (max-width: 700px) {
+  .photo-analyze {
+    grid-template-columns: 1fr;
+  }
+}
+.detect-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.plan-compare {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed var(--border-strong);
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

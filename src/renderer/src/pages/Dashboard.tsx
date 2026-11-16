@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Brain, CalendarClock, CheckCircle2, Droplets, Dumbbell, Flame, Footprints, Lightbulb, Moon, Ruler, Scale, Sparkles, Target, UtensilsCrossed } from 'lucide-react';
+import { Camera, Activity, AlertTriangle, Brain, CalendarClock, CheckCircle2, Droplets, Dumbbell, Flame, Footprints, Lightbulb, Moon, Ruler, Scale, Sparkles, Target, UtensilsCrossed } from 'lucide-react';
 import { useApp, withBonus } from '../store';
 import { Alert, Card, Claims, fmt } from '../components/ui';
 import { WeightTrendChart, SimpleLine } from '../components/charts';
@@ -15,10 +15,22 @@ import { getExercise } from '@shared/training/exercises';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
+import { FoodPhotoModal } from '../components/FoodPhoto';
+import { mealSlots } from '@shared/nutrition/targets';
+import type { MealSlot } from '@shared/types';
+
+/** Comida más probable según la hora. */
+function slotForNow(mealsPerDay: number): MealSlot {
+  const h = new Date().getHours();
+  const guess: MealSlot = h < 11 ? 'desayuno' : h < 13 ? 'colacion1' : h < 17 ? 'comida' : h < 19 ? 'colacion2' : 'cena';
+  const slots = mealSlots(mealsPerDay);
+  return slots.includes(guess) ? guess : guess === 'colacion1' ? (slots.includes('desayuno') ? 'desayuno' : 'comida') : slots.includes('comida') ? 'comida' : slots[0];
+}
 
 export function Dashboard() {
   const { data, state: st, profile, today, reload, toast, settings } = useApp();
   const [modal, setModal] = useState<'peso' | 'recuperacion' | null>(null);
+  const [photo, setPhoto] = useState(false);
   const intake = st.intake.get(today);
   const t = st.targets;
   const water = data.waterLogs.filter((w) => w.date === today).reduce((a, w) => a + w.ml, 0);
@@ -162,7 +174,16 @@ export function Dashboard() {
 
       <div className="grid g3 mb16">
         {/* Anillos del día */}
-        <Card title="Tu día" icon={<Sparkles />} hint={`${fmt(Math.max(0, t.kcal - (intake?.kcal ?? 0)))} kcal restantes`}>
+        <Card
+          title="Tu día"
+          icon={<Sparkles />}
+          hint={`${fmt(Math.max(0, t.kcal - (intake?.kcal ?? 0)))} kcal restantes`}
+          actions={
+            <button className="btn sm" onClick={() => setPhoto(true)} title="Foto de tu comida" data-testid="dash-photo">
+              <Camera /> Foto
+            </button>
+          }
+        >
           <ActivityRings
             size={190}
             rings={[
@@ -288,6 +309,7 @@ export function Dashboard() {
 
       {modal === 'peso' && <BodyLogModal onClose={() => setModal(null)} />}
       {modal === 'recuperacion' && <RecoveryModal onClose={() => setModal(null)} />}
+      {photo && <FoodPhotoModal date={today} slot={slotForNow(profile.mealsPerDay)} onClose={() => setPhoto(false)} />}
     </div>
   );
 }

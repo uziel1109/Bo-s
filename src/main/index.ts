@@ -233,15 +233,9 @@ function registerIpc() {
   handle('ai:setKey', (k: string) => ai.setKey(k));
   handle('ai:clearKey', () => ai.clearKey());
   handle('ai:chat', (q: string, ctx: string, history: { role: 'user' | 'assistant'; content: string }[]) => ai.chat(q, ctx, history));
-  handle('ai:foodPhoto', async (foodNames: string[]) => {
-    const r = await dialog.showOpenDialog(win!, { title: 'Foto de tu comida', properties: ['openFile'], filters: [{ name: 'Imágenes', extensions: ['jpg', 'jpeg', 'png', 'webp'] }] });
-    if (r.canceled || !r.filePaths[0]) return null;
-    const p = r.filePaths[0];
-    const ext = path.extname(p).toLowerCase();
-    const mt = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-    const buf = fs.readFileSync(p);
-    if (buf.length > 5 * 1024 * 1024) throw new Error('La imagen supera 5 MB; usa una más pequeña.');
-    return ai.foodPhoto(buf.toString('base64'), mt, foodNames);
+  handle('ai:analyzeFood', (b64: string, mt: 'image/jpeg' | 'image/png' | 'image/webp', foods: { id: string; name: string }[], planHint?: string) => {
+    if (typeof b64 !== 'string' || b64.length > 7_000_000) throw new Error('Imagen demasiado grande.');
+    return ai.analyzeFood(b64, mt, foods, planHint);
   });
 
   handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir(), photoEncryption: keyStore.isEncryptionAvailable() ? 'Clave protegida por el llavero del sistema' : 'Clave en archivo local con permisos restringidos', platform: process.platform }));

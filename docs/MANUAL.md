@@ -51,7 +51,7 @@ Cada afirmación lleva una etiqueta:
 - **Lista del súper:** desde el plan de comidas toca *Lista del súper*, elige los días (y ×2 o ×4 si compras para más tiempo o personas) y crea la lista. Lo que comes cocido (pollo, arroz, frijol, pasta…) aparece en peso crudo o seco, que es como se compra. Toca cada artículo para marcarlo al echarlo al carrito; la lista se guarda y puedes compartirla por WhatsApp o Notas.
 - **Alimentos:** los alimentos base están verificados contra USDA FoodData Central (SR Legacy); cada uno muestra su número FDC. Si compras un producto de marca, edita sus valores con la etiqueta. Puedes crear alimentos propios (se validan: kcal coherentes con 4/4/9, macros ≤ 100 g).
 - **Código de barras:** escribe el número o usa un lector USB. Se busca primero en tu base; si no existe y hay internet, en Open Food Facts (revisa los valores antes de guardar).
-- **Foto (IA):** solo si activaste la IA externa; los gramos estimados deben revisarse.
+- **Foto del plato (IA):** toca el ícono de cámara en cualquier comida (o *Foto* en el Dashboard), toma la foto y pulsa *Analizar*. La IA identifica el platillo y cada elemento y estima los gramos; las calorías y macros se calculan con tus alimentos verificados (USDA o tu etiqueta) y solo lo que no está en tu base usa valores estimados por la IA (marcado como tal). Verás qué del plan sí está en el plato y qué no; al agregar, puedes **reemplazar** lo que ya habías registrado en esa comida. Los gramos a simple vista tienen un error de ±20–30 %: si pesas la porción y corriges los gramos, el cálculo es exacto. Requiere activar la IA (Inteligencia artificial → Configuración de IA); la foto solo se envía al tocar *Analizar* y no se guarda.
 
 ## 5. Entrenamiento
 

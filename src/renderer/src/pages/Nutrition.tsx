@@ -10,6 +10,7 @@ import { filterFoodsForProfile, foodTags, macrosFor, searchFoods, substitutes, s
 import { generateMealPlan, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
+import { FoodPhotoModal } from '../components/FoodPhoto';
 import { IconTile } from '../components/visual';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
 import { buildShoppingList, SECTION_ORDER, shoppingListText, type Section, type ShoppingList } from '@shared/nutrition/shopping';
@@ -82,6 +83,7 @@ function DailyLog() {
   const { data, state: st, today, reload, toast, profile, favorites } = useApp();
   const [date, setDate] = useState(today);
   const [adding, setAdding] = useState<MealSlot | null>(null);
+  const [photoSlot, setPhotoSlot] = useState<MealSlot | null>(null);
   const [editing, setEditing] = useState<FoodLog | null>(null);
   const logs = data.foodLogs.filter((l) => l.date === date);
   const totals = sumMacros(logs);
@@ -152,6 +154,9 @@ function DailyLog() {
                     <Star />
                   </button>
                 )}
+                <button className="btn sm ghost" onClick={() => setPhotoSlot(slot)} title="Foto del plato (IA)" data-testid={`photo-${slot}`}>
+                  <Camera />
+                </button>
                 <button className="btn sm ghost" onClick={() => copyFromYesterday(slot)} title="Copiar del día anterior">
                   <Copy />
                 </button>
@@ -210,7 +215,18 @@ function DailyLog() {
         );
       })}
       {favorites.length > 0 && <p className="small muted">Tienes {favorites.length} comidas frecuentes guardadas: agrégalas desde el botón “Agregar”.</p>}
-      {adding && <AddFoodModal date={date} slot={adding} onClose={() => setAdding(null)} />}
+      {adding && (
+        <AddFoodModal
+          date={date}
+          slot={adding}
+          onClose={() => setAdding(null)}
+          onPhoto={() => {
+            setPhotoSlot(adding);
+            setAdding(null);
+          }}
+        />
+      )}
+      {photoSlot && <FoodPhotoModal date={date} slot={photoSlot} onClose={() => setPhotoSlot(null)} />}
       {editing && <EditLogModal log={editing} onClose={() => setEditing(null)} />}
     </div>
   );
@@ -247,7 +263,7 @@ function EditLogModal({ log, onClose }: { log: FoodLog; onClose: () => void }) {
   );
 }
 
-function AddFoodModal({ date, slot, onClose }: { date: string; slot: MealSlot; onClose: () => void }) {
+function AddFoodModal({ date, slot, onClose, onPhoto }: { date: string; slot: MealSlot; onClose: () => void; onPhoto: () => void }) {
   const { foods, favorites, recipes, reload, toast } = useApp();
   const [mode, setMode] = useState<'buscar' | 'frecuentes' | 'recetas' | 'foto' | 'codigo'>('buscar');
   const [q, setQ] = useState('');
@@ -431,7 +447,14 @@ function AddFoodModal({ date, slot, onClose }: { date: string; slot: MealSlot; o
         </div>
       )}
       {mode === 'codigo' && <BarcodeLookup onAdded={(f, g) => add([{ food_id: f.id, name: f.name, grams: g, ...macrosFor(f, g) }])} />}
-      {mode === 'foto' && <PhotoLog onAdd={add} />}
+      {mode === 'foto' && (
+        <div className="col" style={{ gap: 12, alignItems: 'flex-start' }}>
+          <p className="small muted">Toma una foto de tu plato: la IA identifica el platillo y sus elementos, calcula los macros con tus alimentos verificados y lo compara con tu plan.</p>
+          <button className="btn primary" onClick={onPhoto}>
+            <Camera /> Abrir cámara
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -485,85 +508,6 @@ function BarcodeLookup({ onAdded }: { onAdded: (f: Food, grams: number) => void 
             </Field>
           }
         />
-      )}
-    </div>
-  );
-}
-
-function PhotoLog({ onAdd }: { onAdd: (rows: Omit<FoodLog, 'id' | 'date' | 'meal'>[]) => Promise<void> }) {
-  const { foods, toast } = useApp();
-  const [cfg, setCfg] = useState<{ enabled: boolean; hasKey: boolean } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [items, setItems] = useState<{ name: string; grams: number; foodId: string | null }[]>([]);
-  const [note, setNote] = useState('');
-  useEffect(() => {
-    api.aiConfig().then(setCfg).catch(() => setCfg({ enabled: false, hasKey: false }));
-  }, []);
-  if (!cfg) return null;
-  if (!cfg.enabled || !cfg.hasKey)
-    return (
-      <Alert kind="info">
-        El registro por fotografía usa la integración opcional de IA, que está desactivada. Actívala en <b>Inteligencia artificial → Configuración de IA</b>. La foto solo se envía cuando eliges analizarla, y los resultados son estimaciones que debes confirmar.
-      </Alert>
-    );
-  return (
-    <div className="col" style={{ gap: 12 }}>
-      <Alert kind="warn">La estimación de cantidades a partir de una foto tiene un error amplio. Revisa y corrige los gramos antes de registrar.</Alert>
-      <button
-        className="btn primary"
-        style={{ alignSelf: 'flex-start' }}
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            const r = await api.aiFoodPhoto(foods.map((f) => f.name));
-            if (r) {
-              setNote(r.note);
-              setItems(r.items.map((i) => ({ name: i.name, grams: i.grams, foodId: foods.find((f) => f.name === i.matchName)?.id ?? null })));
-            }
-          } catch (e) {
-            toast(e instanceof Error ? e.message : String(e), 'error');
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <Camera /> {busy ? 'Analizando…' : 'Elegir foto y analizar'}
-      </button>
-      {note && <p className="small muted">{note}</p>}
-      {items.map((it, i) => (
-        <div className="row nowrap" key={i}>
-          <select className="input" value={it.foodId ?? ''} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, foodId: e.target.value || null } : x)))}>
-            <option value="">{`(sin coincidencia) ${it.name}`}</option>
-            {foods.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          <div style={{ width: 140 }}>
-            <NumInput value={it.grams} onChange={(v) => setItems(items.map((x, j) => (j === i ? { ...x, grams: v ?? 0 } : x)))} suffix="g" />
-          </div>
-        </div>
-      ))}
-      {items.length > 0 && (
-        <button
-          className="btn primary"
-          style={{ alignSelf: 'flex-start' }}
-          onClick={async () => {
-            const rows = items
-              .filter((i) => i.foodId && i.grams > 0)
-              .map((i) => {
-                const f = foods.find((x) => x.id === i.foodId)!;
-                return { food_id: f.id, name: f.name, grams: i.grams, ...macrosFor(f, i.grams) };
-              });
-            if (!rows.length) return toast('Asocia cada elemento con un alimento de tu base.', 'error');
-            await onAdd(rows);
-            setItems([]);
-          }}
-        >
-          Registrar alimentos confirmados
-        </button>
       )}
     </div>
   );

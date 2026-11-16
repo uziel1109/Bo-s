@@ -88,10 +88,36 @@ try {
   check((await page.locator('.shop-item.done').count()) === 1, 'La lista y lo marcado persisten tras recargar');
   await page.click('[data-testid=nav-dashboard]');
 
+  console.log('▶ Foto del plato (IA simulada)');
+  // La IA real requiere la clave del usuario: aquí se simula su respuesta para probar el flujo completo.
+  await page.evaluate(() => {
+    const orig = window.bodyos.invoke;
+    window.bodyos.invoke = (ch, ...a) => {
+      if (ch === 'ai:config') return Promise.resolve({ enabled: true, hasKey: true, model: 'x', secureStorage: true });
+      if (ch === 'ai:analyzeFood')
+        return Promise.resolve(JSON.stringify({ dish: 'Pechuga con arroz', items: [{ name: 'Pechuga asada', grams: 150, foodId: 'pollo_pechuga_cocida', confidence: 'alta' }, { name: 'Arroz', grams: 120, foodId: 'arroz_blanco_cocido', confidence: 'media' }], note: '' }));
+      return orig(ch, ...a);
+    };
+  });
+  await page.click('[data-testid=nav-nutricion]');
+  await page.click('[data-testid=photo-desayuno]');
+  await page.setInputFiles('[data-testid=photo-library-input]', path.join(root, 'src/renderer/public/icons/icon-192.png'));
+  await page.click('[data-testid=photo-analyze]');
+  await page.waitForSelector('[data-testid=photo-dish]');
+  check((await page.textContent('[data-testid=photo-dish]')) === 'Pechuga con arroz', 'La IA identifica el platillo');
+  check((await page.textContent('[data-testid=photo-kcal]')).replace(/\D/g, '') === '404', 'Calorías calculadas con alimentos verificados (248 + 156 = 404)');
+  check(await page.isChecked('[data-testid=photo-replace]'), 'Ofrece reemplazar lo ya registrado en esa comida');
+  await page.screenshot({ path: path.join(shots, `web-ipad-foto-${browserName}.png`) });
+  await page.click('[data-testid=photo-save]');
+  await page.click('[data-testid=nav-dashboard]');
+  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'El registro del día se reemplazó por lo detectado');
+  await page.evaluate(() => location.reload());
+  await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
+
   console.log('▶ Persistencia al recargar');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
-  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '330', 'Los datos persisten tras recargar (IndexedDB)');
+  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'Los datos persisten tras recargar (IndexedDB)');
 
   console.log('▶ Respaldo y restauración');
   await page.click('[data-testid=nav-config]');
@@ -111,7 +137,7 @@ try {
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-testid=onb-restore]')]);
   await chooser.setFiles(backupPath);
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
-  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '330', 'Respaldo restaurado correctamente');
+  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'Respaldo restaurado correctamente');
 
   const portrait = await browser.newContext({ ...pw.devices['iPad Pro 11'] });
   const pp = await portrait.newPage();
