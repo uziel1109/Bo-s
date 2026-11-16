@@ -715,7 +715,7 @@ const CATS: { value: FoodCategory; label: string }[] = [
 function FoodForm({ initial, onSubmit, submitLabel = 'Guardar', extra }: { initial: Partial<Food>; onSubmit: (f: Partial<Food>) => void; submitLabel?: string; extra?: ReactNode }) {
   const [f, setF] = useState<Partial<Food>>({ category: 'otro', kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, ...initial });
   const errs = validateFood(f);
-  const at = atwaterCheck({ kcal: f.kcal ?? 0, protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0 });
+  const at = atwaterCheck({ kcal: f.kcal ?? 0, protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0, tags: f.tags, source: f.source, verified: f.verified });
   const tags = f.tags ? (JSON.parse(f.tags) as string[]) : [];
   return (
     <div className="col" style={{ gap: 12 }}>

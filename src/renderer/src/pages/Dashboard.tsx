@@ -12,6 +12,7 @@ import { addDays, DAY_NAMES, formatDateLong, uid } from '@shared/utils';
 import { stepsTarget, weeklyCardioSummary } from '@shared/cardio/cardio';
 import { strengthTrend } from '@shared/analytics/adaptation';
 import { getExercise } from '@shared/training/exercises';
+import { realPace } from '@shared/body/realPace';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
@@ -50,6 +51,8 @@ export function Dashboard() {
   const waistDelta = waistLogs.length >= 2 ? (waistLogs[waistLogs.length - 1].waist as number) - (waistLogs[0].waist as number) : null;
   const urgent = st.flags.filter((f) => f.level === 'urgente');
   const proj = st.projections[profile.scenario];
+  const real = realPace(data.bodyLogs, today, st.trendWeight ?? st.currentWeight, comp.goalWeight);
+  const realEta = real.etaDate ? new Date(real.etaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
   const eta = proj.reached && proj.weeksToGoal != null ? new Date(addDays(today, proj.weeksToGoal * 7) + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
   const todayMuscles = useMemo(() => {
     const prim = new Set<Muscle>();
@@ -119,14 +122,20 @@ export function Dashboard() {
             <JourneyBar start={st.initialComposition.bf.value} current={comp.bf.value} goal={profile.targetBodyFat} />
             <div className="row mt16">
               {eta ? (
-                <span className="eta-pill">
-                  <CalendarClock size={16} /> Meta estimada: ~{proj.weeksToGoal} semanas · {eta}
+                <span className="eta-pill" title="Si sigues el ritmo del escenario de tu plan">
+                  <CalendarClock size={16} /> Según el plan: ~{proj.weeksToGoal} sem · {eta}
                 </span>
               ) : (
                 <span className="eta-pill">
                   <Target size={16} /> ¡Estás en tu objetivo!
                 </span>
               )}
+              {real.status === 'ok' && (
+                <span className="eta-pill real" title={real.message} data-testid="dash-real-eta">
+                  <Footprints size={16} /> A tu ritmo real: ~{real.weeksToGoal} sem · {realEta}
+                </span>
+              )}
+              {real.status === 'sin_perdida' && <span className="eta-pill real">A tu ritmo real: sin bajar aún</span>}
               <span className="small muted">
                 ≈ {fmt(comp.fatToLose, 1)} kg de grasa por perder · ±{comp.bf.error} pts ({comp.bf.label})
               </span>

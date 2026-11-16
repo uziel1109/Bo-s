@@ -9,6 +9,7 @@ import { MUSCLE_LABEL } from '../training/exercises';
 import { weeklySetTarget } from '../training/generator';
 import { stepsTarget } from '../cardio/cardio';
 import { SCENARIOS } from '../body/projection';
+import { realPace } from '../body/realPace';
 
 export interface AssistantQuestion {
   key: string;
@@ -156,6 +157,9 @@ export function answer(key: string, data: AppData, st: EngineState): Claim[] {
         const eta = addDays(t, pr.weeksToGoal * 7);
         out.push({ kind: 'estimacion', text: `Escenario ${pr.scenario.label}: ≈${pr.weeksToGoal} semanas (alrededor del ${new Date(eta + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}).` });
       } else out.push({ kind: 'estimacion', text: 'Con el escenario actual no se alcanza el objetivo en 2 años de proyección; revisa el simulador.' });
+      const real = realPace(data.bodyLogs, t, st.trendWeight ?? st.currentWeight, st.composition.goalWeight);
+      if (real.status === 'ok') out.push({ kind: 'estimacion', text: `A tu ritmo real: ≈${real.weeksToGoal} semanas. ${real.message}` });
+      else out.push({ kind: 'dato', text: `Ritmo real: ${real.message}` });
       out.push({ kind: 'hipotesis', text: 'Es una proyección: la adherencia, el sueño y la variación individual cambian la fecha real.' });
       break;
     }

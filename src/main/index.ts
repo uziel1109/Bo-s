@@ -238,6 +238,13 @@ function registerIpc() {
     return ai.analyzeFood(b64, mt, foods, planHint);
   });
 
+  handle('file:save', async (name: string, content: string, mime: string) => {
+    const ext = name.split('.').pop() ?? '*';
+    const r = await dialog.showSaveDialog(win!, { title: 'Guardar archivo', defaultPath: name, filters: [{ name: mime, extensions: [ext] }] });
+    if (r.canceled || !r.filePath) return null;
+    fs.writeFileSync(r.filePath, content);
+    return r.filePath;
+  });
   handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir(), photoEncryption: keyStore.isEncryptionAvailable() ? 'Clave protegida por el llavero del sistema' : 'Clave en archivo local con permisos restringidos', platform: process.platform }));
   handle('app:openDataFolder', () => shell.openPath(dataDir()));
 }

@@ -114,6 +114,36 @@ try {
   await page.evaluate(() => location.reload());
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
 
+  console.log('▶ Ritmo real, recordatorios y calentamiento');
+  await page.evaluate(async () => {
+    const rows = [];
+    for (let i = 28; i >= 1; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      rows.push({ id: 'sim' + i, date, weight: Math.round((95 - (28 - i) * 0.1) * 10) / 10 });
+    }
+    await window.bodyos.invoke('db:bulkUpsert', 'body_logs', rows);
+  });
+  await page.reload();
+  await page.waitForSelector('[data-testid=dash-real-eta]', { timeout: 20000 });
+  check(/semanas?|sem/.test(await page.textContent('[data-testid=dash-real-eta]')), `Fecha a tu ritmo real: ${(await page.textContent('[data-testid=dash-real-eta]')).trim()}`);
+  await page.screenshot({ path: path.join(shots, `web-ipad-ritmo-${browserName}.png`) });
+  await page.click('[data-testid=nav-calendario]');
+  const [ics] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('[data-testid=ics-export]')]);
+  const icsPath = path.join(shots, 'recordatorios.ics');
+  await ics.saveAs(icsPath);
+  const icsText = fs.readFileSync(icsPath, 'utf8');
+  check(icsText.startsWith('BEGIN:VCALENDAR') && (icsText.match(/BEGIN:VEVENT/g) ?? []).length >= 5, `Archivo .ics con ${(icsText.match(/BEGIN:VEVENT/g) ?? []).length} recordatorios`);
+  await page.click('[data-testid=nav-entrenamiento]');
+  await page.click('[data-testid=session-start]');
+  await page.waitForSelector('[data-testid=ex-0]');
+  await page.fill('[data-testid=w-0-0]', '60');
+  await page.waitForTimeout(300);
+  check(await page.locator('.warmup').first().isVisible(), 'Series de calentamiento sugeridas');
+  await page.screenshot({ path: path.join(shots, `web-ipad-calentamiento-${browserName}.png`) });
+  await page.click('button:has-text("Descartar")');
+  await page.click('[data-testid=nav-dashboard]');
+
   console.log('▶ Persistencia al recargar');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });

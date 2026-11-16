@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Info, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
+import { Disc3, Flame, Check, Info, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
 import { Alert, Card, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
@@ -7,6 +7,7 @@ import { SimpleBars, SimpleLine } from '../components/charts';
 import { MuscleMap } from '../components/MuscleMap';
 import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REGION_LABEL, type Exercise } from '@shared/training/exercises';
 import { generateRoutine, weeklySetTarget, type Routine, type RoutineDay } from '@shared/training/generator';
+import { platesFor, warmupSets } from '@shared/training/warmup';
 import { bestE1rm, deloadAdvice, exerciseHistory, muscleWeekStats, progressionAdvice, sessionVolume, type ProgressionAdvice } from '@shared/training/progression';
 import type { ExerciseLog, Muscle, SetLog, WorkoutSession } from '@shared/types';
 import { DAY_NAMES, formatDateShort, round, uid } from '@shared/utils';
@@ -223,6 +224,7 @@ function SessionLogger() {
               </div>
             </div>
             {adv && <div className="small muted mb8">{adv.reason}</div>}
+            {ex && <WarmupAndPlates ex={ex} weight={e.sets.find((x) => !x.done)?.weight || e.sets[0]?.weight || 0} />}
             {rd?.caution && <Alert kind="warn">{rd.caution}</Alert>}
             <div className="set-grid tiny muted" style={{ marginBottom: 6 }}>
               <div>Serie</div>
@@ -314,6 +316,46 @@ function SessionLogger() {
             setSwapIdx(null);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function WarmupAndPlates({ ex, weight }: { ex: Exercise; weight: number }) {
+  const [open, setOpen] = useState(false);
+  const warm = warmupSets(ex, weight);
+  const barbell = ex.equipment.includes('barra');
+  const plates = barbell && weight > 20 ? platesFor(weight) : null;
+  if (!warm.length && !plates) return null;
+  return (
+    <div className="warmup mb8">
+      {warm.length > 0 && (
+        <div className="row" style={{ gap: 6 }}>
+          <span className="tiny muted">
+            <Flame size={12} /> Calentamiento:
+          </span>
+          {warm.map((w, i) => (
+            <span key={i} className="chip-stat" title={w.label}>
+              <b>{w.weight}</b> kg × {w.reps}
+            </span>
+          ))}
+          <span className="tiny muted">(no cuentan como series de trabajo)</span>
+        </div>
+      )}
+      {plates && (
+        <div className="mt8">
+          <button className="btn sm ghost" onClick={() => setOpen(!open)} data-testid="plates-toggle">
+            <Disc3 size={14} /> Discos para {weight} kg
+          </button>
+          {open && (
+            <div className="plates" data-testid="plates">
+              <span className="plate-bar">Barra 20 kg</span>
+              <span className="tiny muted">+ por lado:</span>
+              {plates.perSide.length ? plates.perSide.map((p, i) => <span key={i} className={`plate p${String(p).replace('.', '_')}`}>{p}</span>) : <span className="tiny muted">sin discos</span>}
+              {plates.remainder !== 0 && <span className="tiny" style={{ color: 'var(--warn)' }}>Con discos estándar llegas a {plates.achieved} kg</span>}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

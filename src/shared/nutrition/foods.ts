@@ -34,7 +34,11 @@ export function sumMacros(items: Partial<Macros>[]): Macros {
 }
 
 /** Coherencia energética: kcal declaradas vs. 4/4/9 (Atwater). Útil para validar alimentos personalizados. */
-export function atwaterCheck(f: Pick<Food, 'kcal' | 'protein' | 'carbs' | 'fat'>): { computed: number; diffPct: number; ok: boolean } {
+export function atwaterCheck(f: Pick<Food, 'kcal' | 'protein' | 'carbs' | 'fat'> & { tags?: string | null; source?: string | null; verified?: number | null }): { computed: number; diffPct: number; ok: boolean } {
+  // USDA calcula la energía con factores específicos por alimento (p. ej., cítricos): su valor oficial prevalece.
+  if (f.verified && f.source?.startsWith('USDA FoodData Central SR Legacy')) return { computed: f.kcal, diffPct: 0, ok: true };
+  // Las bebidas alcohólicas aportan 7 kcal/g de alcohol, que no está entre los macros: no aplica 4/4/9.
+  if (f.tags && f.tags.includes('"alcohol"')) return { computed: f.kcal, diffPct: 0, ok: true };
   const computed = f.protein * 4 + f.carbs * 4 + f.fat * 9;
   const diffPct = f.kcal > 0 ? ((computed - f.kcal) / f.kcal) * 100 : 0;
   // Margen amplio: la fibra, el alcohol y los factores específicos de Atwater generan diferencias legítimas.

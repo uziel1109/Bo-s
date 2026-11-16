@@ -1752,3 +1752,46 @@ body {
     transform: rotate(360deg);
   }
 }
+
+.eta-pill.real {
+  background: color-mix(in srgb, var(--m-cyan) 16%, transparent);
+  border-color: color-mix(in srgb, var(--m-cyan) 40%, transparent);
+}
+
+.warmup {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--m-orange) 8%, transparent);
+}
+.plates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.plate-bar {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+.plate {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 750;
+  font-size: 12px;
+  color: #0b0e12;
+  background: var(--m-slate);
+}
+.plate.p25 { background: #ef4444; height: 44px; }
+.plate.p20 { background: #3b82f6; height: 42px; }
+.plate.p15 { background: #eab308; height: 40px; }
+.plate.p10 { background: #22c55e; height: 38px; }
+.plate.p5 { background: #e5e7eb; }
+.plate.p2_5 { background: #9ca3af; height: 30px; }
+.plate.p1_25 { background: #d1d5db; height: 26px; }

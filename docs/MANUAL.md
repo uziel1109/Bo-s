@@ -57,6 +57,7 @@ Cada afirmación lleva una etiqueta:
 
 - **Mi rutina:** división elegida y su justificación, ejercicios por día con series/reps/RIR/descanso. Ajusta series con − / +. *Regenerar* muestra una propuesta antes de reemplazar.
 - **Sesión de hoy:** junto a cada ejercicio verás la recomendación de progresión (*Subir peso*, *Sumar repeticiones*, *Mantener*, *Reducir carga*, *Revisar dolor*). Con ↻ cambias por una alternativa; con ⓘ ves la técnica.
+- **Calentamiento y discos:** en los ejercicios compuestos verás las series de aproximación sugeridas (no cuentan como series de trabajo) y, en los de barra, el botón *Discos* indica qué discos poner por lado (barra de 20 kg).
 - **RIR** = repeticiones que te quedaron en reserva. RIR 2 = podías hacer 2 más.
 - **Progresión:** se sube el peso solo cuando completas el tope del rango en todas las series con el esfuerzo previsto. Si marcas dolor, no se progresa.
 - **Por músculo:** series efectivas por semana, frecuencia y recuperación estimada.
@@ -80,6 +81,8 @@ Gráficas por periodo, fotos cifradas (arrastra o selecciona; registra luz, hora
 
 ## 9. Calendario
 
+**Recordatorios:** en Calendario → *Recordatorios en el calendario de tu iPad* elige qué recordar (entrenos, pesaje, medidas, revisión semanal, fotos, comidas) y toca *Agregar a mi calendario*. Abre el archivo descargado y toca *Agregar todo*: el Calendario te avisará con sus notificaciones. Si cambias tu rutina, vuelve a exportar.
+
 Cada día muestra sus actividades. Pesaje, comidas y entrenamiento se marcan solos cuando los registras; las demás se marcan con un clic. No completar una actividad no genera penalizaciones ni cambios automáticos.
 
 ## 10. Respaldos, exportación y eliminación
@@ -92,6 +95,8 @@ En **Configuración → Datos y respaldos**:
 - **Eliminar todo**: borra perfil, registros y fotos del equipo.
 
 ## 11. Preguntas frecuentes
+
+**¿Qué diferencia hay entre "Según el plan" y "A tu ritmo real"?** La primera supone que sigues el ritmo de tu escenario; la segunda usa lo que tu peso hizo de verdad en las últimas 2–4 semanas (aparece cuando tienes al menos 2 semanas y 6 pesajes).
 
 **¿Por qué mi % de grasa dice "estimado"?** Porque proviene de una fórmula con medidas corporales (error típico de ±4 puntos). Úsalo para ver tendencias.
 

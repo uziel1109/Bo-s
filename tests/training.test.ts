@@ -139,3 +139,27 @@ describe('Estadísticas musculares y descarga', () => {
     expect(noFatigue.recommended).toBe(false);
   });
 });
+
+import { platesFor, warmupSets } from '../src/shared/training/warmup';
+describe('Calentamiento y discos', () => {
+  const sentadilla = getExercise('sentadilla')!;
+  const pressMancuernas = getExercise('press_mancuernas')!;
+  const curl = getExercise('curl_mancuernas')!;
+  it('series de aproximación con barra', () => {
+    const w = warmupSets(sentadilla, 100);
+    expect(w.map((s) => s.weight)).toEqual([20, 50, 70, 85]);
+    expect(w.map((s) => s.reps)).toEqual([10, 5, 3, 1]);
+    expect(warmupSets(sentadilla, 50).map((s) => s.weight)).toEqual([20, 25, 35]); // sin 85 % con carga ligera
+    expect(warmupSets(sentadilla, 30).map((s) => s.weight)).toEqual([20]);
+  });
+  it('mancuernas y aislamientos', () => {
+    expect(warmupSets(pressMancuernas, 30).map((s) => s.weight)).toEqual([16, 22]);
+    expect(warmupSets(curl, 14)).toEqual([]);
+  });
+  it('discos por lado', () => {
+    expect(platesFor(100)).toEqual({ perSide: [25, 15], achieved: 100, remainder: 0 });
+    expect(platesFor(62.5).perSide).toEqual([20, 1.25]);
+    expect(platesFor(61).remainder).toBeCloseTo(1, 5);
+    expect(platesFor(20).perSide).toEqual([]);
+  });
+});

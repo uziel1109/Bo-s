@@ -8,6 +8,7 @@ import { BodyLogModal } from '../components/QuickLogs';
 import { METHOD_LABEL, METHOD_ERROR, ACTIVITY_BASE } from '@shared/body/composition';
 import { SCENARIOS } from '@shared/body/projection';
 import { LIMITATIONS } from '@shared/references';
+import { realPace } from '@shared/body/realPace';
 import type { ScenarioKey } from '@shared/types';
 import { addDays, formatDateShort } from '@shared/utils';
 import { calculateTargets } from '@shared/nutrition/targets';
@@ -298,6 +299,24 @@ function Simulator() {
           );
         })}
       </div>
+      {(() => {
+        const r = realPace(data.bodyLogs, st.today, st.trendWeight ?? st.currentWeight, c.goalWeight);
+        return (
+          <Card title="A tu ritmo real" hint="Con tus pesajes, no con fórmulas">
+            {r.status === 'ok' ? (
+              <div className="row" style={{ gap: 28 }}>
+                <Stat label="Tiempo estimado" value={`~${r.weeksToGoal}`} unit="semanas" foot={new Date(r.etaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} />
+                <Stat label="Tu ritmo medido" value={`${r.pctPerWeek}`} unit="%/sem" foot={`${r.kgPerWeek} kg/sem · ${r.weighIns} pesajes`} />
+                <Stat label="Escenario del plan" value={st.projections[profile.scenario].weeksToGoal != null ? `~${st.projections[profile.scenario].weeksToGoal}` : '—'} unit="semanas" foot={SCENARIOS[profile.scenario].label} />
+              </div>
+            ) : (
+              <p className="muted">{r.message}</p>
+            )}
+            {r.status === 'ok' && <p className="small muted mt8">{r.message} Supone que mantienes el mismo % de pérdida semanal; conforme bajas de peso, el ritmo suele desacelerarse.</p>}
+            {r.fastWarning && <Alert kind="warn">Pierdes más de 1 % de tu peso por semana: vigila tu fuerza y tu energía. Si bajan, conviene comer un poco más para proteger tu músculo.</Alert>}
+          </Card>
+        );
+      })()}
       <Alert kind="info">Las proyecciones son escenarios, no promesas. La fecha real depende de la adherencia, el sueño, el estrés y la variación individual; BODY OS la recalcula con tus datos.</Alert>
     </div>
   );

@@ -709,5 +709,284 @@
   "carbs": 99.98,
   "fat": 0.0,
   "fiber": 0.0
+ },
+ "tostada_maiz": {
+  "fdc": 167525,
+  "desc": "Tostada shells, corn",
+  "kcal": 474.0,
+  "protein": 6.15,
+  "carbs": 64.43,
+  "fat": 23.38,
+  "fiber": 5.8
+ },
+ "tortilla_harina": {
+  "fdc": 175037,
+  "desc": "Tortillas, ready-to-bake or -fry, flour, refrigerated",
+  "kcal": 306.0,
+  "protein": 8.2,
+  "carbs": 49.38,
+  "fat": 7.99,
+  "fiber": 3.5
+ },
+ "chorizo": {
+  "fdc": 173859,
+  "desc": "Sausage, pork, chorizo, link or ground, raw",
+  "kcal": 296.0,
+  "protein": 13.63,
+  "carbs": 3.78,
+  "fat": 25.1,
+  "fiber": 0.0
+ },
+ "salsa_roja": {
+  "fdc": 174524,
+  "desc": "Sauce, salsa, ready-to-serve",
+  "kcal": 29.0,
+  "protein": 1.52,
+  "carbs": 6.64,
+  "fat": 0.17,
+  "fiber": 1.9
+ },
+ "salsa_verde": {
+  "fdc": 171824,
+  "desc": "Sauce, salsa, verde, ready-to-serve",
+  "kcal": 38.0,
+  "protein": 1.13,
+  "carbs": 6.36,
+  "fat": 0.89,
+  "fiber": 1.9
+ },
+ "frijoles_refritos": {
+  "fdc": 172438,
+  "desc": "Refried beans, canned, traditional style",
+  "kcal": 90.0,
+  "protein": 4.98,
+  "carbs": 13.55,
+  "fat": 2.01,
+  "fiber": 3.7
+ },
+ "tamal_cerdo": {
+  "fdc": 168067,
+  "desc": "Restaurant, Latino, tamale, pork",
+  "kcal": 174.0,
+  "protein": 7.35,
+  "carbs": 15.75,
+  "fat": 9.04,
+  "fiber": 2.4
+ },
+ "enchilada_queso": {
+  "fdc": 169855,
+  "desc": "Restaurant, Mexican, cheese enchilada",
+  "kcal": 273.0,
+  "protein": 11.24,
+  "carbs": 15.45,
+  "fat": 18.47,
+  "fiber": 1.9
+ },
+ "quesadilla_queso": {
+  "fdc": 169035,
+  "desc": "Restaurant, Mexican, cheese quesadilla",
+  "kcal": 368.0,
+  "protein": 15.93,
+  "carbs": 24.11,
+  "fat": 23.08,
+  "fiber": 1.7
+ },
+ "pan_dulce": {
+  "fdc": 167935,
+  "desc": "Bread, pan dulce, sweet yeast bread",
+  "kcal": 367.0,
+  "protein": 9.42,
+  "carbs": 56.38,
+  "fat": 11.58,
+  "fiber": 2.3
+ },
+ "jalapeno": {
+  "fdc": 168576,
+  "desc": "Peppers, jalapeno, raw",
+  "kcal": 29.0,
+  "protein": 0.91,
+  "carbs": 6.5,
+  "fat": 0.37,
+  "fiber": 2.8
+ },
+ "limon": {
+  "fdc": 168155,
+  "desc": "Limes, raw",
+  "kcal": 30.0,
+  "protein": 0.7,
+  "carbs": 10.54,
+  "fat": 0.2,
+  "fiber": 2.8
+ },
+ "tomate_verde": {
+  "fdc": 168566,
+  "desc": "Tomatillos, raw",
+  "kcal": 32.0,
+  "protein": 0.96,
+  "carbs": 5.84,
+  "fat": 1.02,
+  "fiber": 1.9
+ },
+ "cilantro": {
+  "fdc": 169997,
+  "desc": "Coriander (cilantro) leaves, raw",
+  "kcal": 23.0,
+  "protein": 2.13,
+  "carbs": 3.67,
+  "fat": 0.52,
+  "fiber": 2.8
+ },
+ "ajo": {
+  "fdc": 169230,
+  "desc": "Garlic, raw",
+  "kcal": 149.0,
+  "protein": 6.36,
+  "carbs": 33.06,
+  "fat": 0.5,
+  "fiber": 2.1
+ },
+ "chicharron": {
+  "fdc": 167961,
+  "desc": "Snacks, pork skins, plain",
+  "kcal": 544.0,
+  "protein": 61.3,
+  "carbs": 0.0,
+  "fat": 31.3,
+  "fiber": 0.0
+ },
+ "refresco_cola": {
+  "fdc": 174852,
+  "desc": "Beverages, carbonated, cola, regular",
+  "kcal": 42.0,
+  "protein": 0.0,
+  "carbs": 10.36,
+  "fat": 0.25,
+  "fiber": 0.0
+ },
+ "cerveza": {
+  "fdc": 168746,
+  "desc": "Alcoholic beverage, beer, regular, all",
+  "kcal": 43.0,
+  "protein": 0.46,
+  "carbs": 3.55,
+  "fat": 0.0,
+  "fiber": 0.0
+ },
+ "destilado": {
+  "fdc": 174815,
+  "desc": "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 80 proof",
+  "kcal": 231.0,
+  "protein": 0.0,
+  "carbs": 0.0,
+  "fat": 0.0,
+  "fiber": 0.0
+ },
+ "cafe": {
+  "fdc": 171890,
+  "desc": "Beverages, coffee, brewed, prepared with tap water",
+  "kcal": 1.0,
+  "protein": 0.12,
+  "carbs": 0.0,
+  "fat": 0.02,
+  "fiber": 0.0
+ },
+ "queso_asadero": {
+  "fdc": 173437,
+  "desc": "Cheese, mexican, queso asadero",
+  "kcal": 356.0,
+  "protein": 22.6,
+  "carbs": 4.13,
+  "fat": 25.0,
+  "fiber": 0.0
+ },
+ "queso_cotija": {
+  "fdc": 170898,
+  "desc": "Cheese, mexican, queso cotija",
+  "kcal": 366.0,
+  "protein": 20.0,
+  "carbs": 3.97,
+  "fat": 30.0,
+  "fiber": 0.0
+ },
+ "queso_blanco": {
+  "fdc": 172224,
+  "desc": "Cheese, white, queso blanco",
+  "kcal": 310.0,
+  "protein": 20.38,
+  "carbs": 2.53,
+  "fat": 24.31,
+  "fiber": 0.0
+ },
+ "queso_chihuahua": {
+  "fdc": 173438,
+  "desc": "Cheese, mexican, queso chihuahua",
+  "kcal": 374.0,
+  "protein": 21.56,
+  "carbs": 5.56,
+  "fat": 29.68,
+  "fiber": 0.0
+ },
+ "queso_mozzarella": {
+  "fdc": 170847,
+  "desc": "Cheese, mozzarella, part skim milk",
+  "kcal": 254.0,
+  "protein": 24.26,
+  "carbs": 2.77,
+  "fat": 15.92,
+  "fiber": 0.0
+ },
+ "jamon_pavo": {
+  "fdc": 168092,
+  "desc": "Ham, turkey, sliced, extra lean, prepackaged or deli",
+  "kcal": 134.0,
+  "protein": 19.6,
+  "carbs": 0.93,
+  "fat": 5.8,
+  "fiber": 0.0
+ },
+ "jamon_cerdo": {
+  "fdc": 173863,
+  "desc": "Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",
+  "kcal": 107.0,
+  "protein": 16.85,
+  "carbs": 0.7,
+  "fat": 4.04,
+  "fiber": 0.0
+ },
+ "crema": {
+  "fdc": 171257,
+  "desc": "Cream, sour, cultured",
+  "kcal": 198.0,
+  "protein": 2.44,
+  "carbs": 4.63,
+  "fat": 19.35,
+  "fiber": 0.0
+ },
+ "horchata": {
+  "fdc": 171941,
+  "desc": "Beverages, Horchata, as served in restaurant",
+  "kcal": 54.0,
+  "protein": 0.48,
+  "carbs": 11.52,
+  "fat": 0.71,
+  "fiber": 0.0
+ },
+ "galletas_saladas": {
+  "fdc": 172746,
+  "desc": "Crackers, saltines (includes oyster, soda, soup)",
+  "kcal": 418.0,
+  "protein": 9.46,
+  "carbs": 74.05,
+  "fat": 8.64,
+  "fiber": 2.8
+ },
+ "nachos_queso": {
+  "fdc": 170291,
+  "desc": "Fast foods, nachos, with cheese",
+  "kcal": 343.0,
+  "protein": 4.32,
+  "carbs": 34.91,
+  "fat": 21.5,
+  "fiber": 3.2
  }
 }

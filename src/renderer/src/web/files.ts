@@ -23,11 +23,11 @@ export function pickFiles(accept: string, multiple = false): Promise<File[]> {
 }
 
 /** Guarda un archivo: en iPad ofrece "Guardar en Archivos" mediante la hoja de compartir; si no, lo descarga. */
-export async function saveFile(name: string, data: Uint8Array | string, mime: string): Promise<string> {
+export async function saveFile(name: string, data: Uint8Array | string, mime: string, preferShare = true): Promise<string> {
   const blob = new Blob([data as BlobPart], { type: mime });
   const file = new File([blob], name, { type: mime });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-  if (/iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document && nav.canShare?.({ files: [file] })) {
+  if (preferShare && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document && nav.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: name });
       return name;
