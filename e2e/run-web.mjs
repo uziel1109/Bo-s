@@ -36,6 +36,15 @@ const device = pw.devices['iPad Pro 11 landscape'];
 const context = await browser.newContext({ ...device, acceptDownloads: true, serviceWorkers: 'allow' });
 if (browserName === 'chromium') await context.grantPermissions(['camera']);
 const page = await context.newPage();
+// En iPad la barra lateral está comprimida: primero se expande y luego se elige la sección.
+const nav = async (k) => {
+  const collapsed = await page.evaluate(() => matchMedia('(max-width: 1250px)').matches);
+  if (collapsed && !(await page.locator('[data-testid=sidebar].open').count())) {
+    await page.click('[data-testid=sidebar] .brand');
+    await page.waitForSelector('[data-testid=sidebar].open');
+  }
+  await page.click(`[data-testid=nav-${k}]`);
+};
 // Los hitos nuevos muestran una celebración a pantalla completa: se cierra sola en la prueba y se cuenta.
 const celebrations = [];
 await page.addLocatorHandler(page.getByTestId('milestone-celebration'), async () => {
@@ -60,21 +69,30 @@ try {
   check((await page.textContent('[data-testid=dash-weight]')).includes('92'), 'Perfil creado y panel visible');
   const noHScroll = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   check(noHScroll, 'Sin desplazamiento horizontal en iPad');
+  check((await page.locator('[data-testid=sidebar] .nav-item span:not(.icon-tile)').first().isVisible()) === false, 'Barra lateral comprimida (solo íconos)');
+  await page.click('[data-testid=sidebar] .brand');
+  await page.waitForSelector('[data-testid=sidebar].open');
+  check(await page.locator('[data-testid=sidebar] .nav-item span:not(.icon-tile)').first().isVisible(), 'Al tocarla se expande con los nombres');
+  await page.screenshot({ path: path.join(shots, `web-ipad-menu-${browserName}.png`) });
+  await page.click('[data-testid=nav-cuerpo]');
+  await page.waitForFunction(() => !document.querySelector('[data-testid=sidebar].open'));
+  check(true, 'Al elegir una sección se vuelve a comprimir');
+  await nav('dashboard');
 
-  await page.click('[data-testid=nav-nutricion]');
+  await nav('nutricion');
   await page.click('[data-testid=add-food-desayuno]');
   await page.fill('[data-testid=food-search]', 'pechuga de pollo sin piel, asada');
   await page.click('[data-testid=food-option-pollo_pechuga_cocida]');
   await page.fill('[data-testid=food-grams]', '200');
   await page.click('[data-testid=food-add-confirm]');
   await page.keyboard.press('Escape');
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '330', 'Comida registrada: 330 kcal');
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(shots, `web-ipad-dashboard-${browserName}.png`) });
 
   console.log('▶ Lista del súper');
-  await page.click('[data-testid=nav-nutricion]');
+  await nav('nutricion');
   await page.click('.tabs button:has-text("Plan y súper")');
   await page.click('.tabs.sub button:has-text("Plan de comidas")');
   await page.click('[data-testid=gen-mealplan]');
@@ -90,12 +108,12 @@ try {
   await page.screenshot({ path: path.join(shots, `web-ipad-super-${browserName}.png`) });
   await page.reload();
   await page.waitForSelector('[data-testid=dash-weight]', { timeout: 20000 });
-  await page.click('[data-testid=nav-nutricion]');
+  await nav('nutricion');
   await page.click('.tabs button:has-text("Plan y súper")');
   await page.click('.tabs.sub button:has-text("Lista del súper")');
   await page.waitForSelector('.shop-item');
   check((await page.locator('.shop-item.done').count()) === 1, 'La lista y lo marcado persisten tras recargar');
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
 
   console.log('▶ Foto del plato (IA simulada)');
   // La IA real requiere la clave del usuario: aquí se simula su respuesta para probar el flujo completo.
@@ -108,7 +126,7 @@ try {
       return orig(ch, ...a);
     };
   });
-  await page.click('[data-testid=nav-nutricion]');
+  await nav('nutricion');
   await page.click('[data-testid=photo-desayuno]');
   await page.setInputFiles('[data-testid=photo-library-input]', path.join(root, 'src/renderer/public/icons/icon-192.png'));
   await page.click('[data-testid=photo-analyze]');
@@ -118,7 +136,7 @@ try {
   check(await page.isChecked('[data-testid=photo-replace]'), 'Ofrece reemplazar lo ya registrado en esa comida');
   await page.screenshot({ path: path.join(shots, `web-ipad-foto-${browserName}.png`) });
   await page.click('[data-testid=photo-save]');
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'El registro del día se reemplazó por lo detectado');
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
@@ -137,13 +155,13 @@ try {
   await page.waitForSelector('[data-testid=dash-real-eta]', { timeout: 20000 });
   check(/semanas?|sem/.test(await page.textContent('[data-testid=dash-real-eta]')), `Fecha a tu ritmo real: ${(await page.textContent('[data-testid=dash-real-eta]')).trim()}`);
   await page.screenshot({ path: path.join(shots, `web-ipad-ritmo-${browserName}.png`) });
-  await page.click('[data-testid=nav-calendario]');
+  await nav('calendario');
   const [ics] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('[data-testid=ics-export]')]);
   const icsPath = path.join(shots, 'recordatorios.ics');
   await ics.saveAs(icsPath);
   const icsText = fs.readFileSync(icsPath, 'utf8');
   check(icsText.startsWith('BEGIN:VCALENDAR') && (icsText.match(/BEGIN:VEVENT/g) ?? []).length >= 5, `Archivo .ics con ${(icsText.match(/BEGIN:VEVENT/g) ?? []).length} recordatorios`);
-  await page.click('[data-testid=nav-entrenamiento]');
+  await nav('entrenamiento');
   await page.click('[data-testid=session-start]');
   await page.waitForSelector('[data-testid=ex-0]');
   await page.fill('[data-testid=w-0-0]', '60');
@@ -178,7 +196,7 @@ try {
   await page.click('button:has-text("Descartar")');
 
   console.log('▶ Fases, recetas, preparación y saciedad');
-  await page.click('[data-testid=nav-nutricion]');
+  await nav('nutricion');
   await page.click('.tabs button:has-text("Fases y eventos")');
   await page.fill('[data-testid=event-name]', 'Boda');
   await page.click('[data-testid=event-add]');
@@ -215,7 +233,7 @@ try {
       return orig(ch, ...a);
     };
   });
-  await page.click('[data-testid=nav-progreso]');
+  await nav('progreso');
   await page.click('.tabs button:has-text("Resumen mensual")');
   await page.waitForSelector('[data-testid=monthly-card]');
   await page.click('[data-testid=monthly-save]');
@@ -223,13 +241,13 @@ try {
   const saved = await page.evaluate(() => window.__saved);
   check(saved.png && saved.size > 20000 && /bodyos-resumen-\d{4}-\d{2}\.png/.test(saved.name), `Imagen del resumen generada (${Math.round(saved.size / 1024)} KB)`);
   await page.screenshot({ path: path.join(shots, `web-ipad-mensual-${browserName}.png`) });
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
   await page.waitForSelector('[data-testid=challenges]');
   check((await page.locator('[data-testid=challenges] .challenge').count()) > 0, `Retos de la semana: ${await page.locator('[data-testid=challenges] .challenge').count()}`);
 
   console.log('▶ Hitos y fotos con guía');
   check(celebrations.length > 0, `Celebración de hitos mostrada (${celebrations[0] ?? 'ninguna'})`);
-  await page.click('[data-testid=nav-progreso]');
+  await nav('progreso');
   await page.click('.tabs button:has-text("Hitos")');
   await page.waitForSelector('[data-testid=milestone-list] .milestone-row');
   check((await page.locator('[data-testid=milestone-list] .milestone-row').count()) > 0, `Línea de tiempo con ${await page.locator('[data-testid=milestone-list] .milestone-row').count()} hitos`);
@@ -251,10 +269,10 @@ try {
     await page.screenshot({ path: path.join(shots, `web-ipad-camara-${browserName}.png`) });
     await page.click('[aria-label="Cerrar cámara"]');
   }
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
 
   console.log('▶ Hipertrofia: mesociclo, retroalimentación y RIR');
-  await page.click('[data-testid=nav-entrenamiento]');
+  await nav('entrenamiento');
   await page.click('.tabs button:has-text("Mesociclo")');
   await page.click('.seg button:has-text("Esta semana")');
   await page.click('[data-testid=meso-start]');
@@ -299,17 +317,17 @@ try {
   await page.click('.tabs button:has-text("Por músculo")');
   await page.waitForSelector('text=Fuerza por músculo');
   check(true, 'Panel de progreso por músculo visible');
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
 
   console.log('▶ Modo sin entrenamiento');
   const kcalBefore = Number((await page.locator('[data-testid=dash-kcal]').locator('..').textContent()).split('/')[1]?.replace(/\D/g, '') || 0);
-  await page.click('[data-testid=nav-entrenamiento]');
+  await nav('entrenamiento');
   await page.click('[data-testid=no-training-open]');
   await page.waitForSelector('[data-testid=no-training-preview]');
   await page.click('[data-testid=no-training-confirm]');
   await page.waitForSelector('[data-testid=no-training-banner]');
   check((await page.textContent('.page')).includes('está en pausa'), 'Rutina en pausa en modo sin entrenamiento');
-  await page.click('[data-testid=nav-dashboard]');
+  await nav('dashboard');
   await page.waitForSelector('[data-testid=no-training-banner]');
   const kcalAfter = Number((await page.locator('[data-testid=dash-kcal]').locator('..').textContent()).split('/')[1]?.replace(/\D/g, '') || 0);
   check(kcalAfter > 0 && kcalAfter < kcalBefore, `Calorías del día bajan sin entrenar (${kcalBefore} → ${kcalAfter})`);
@@ -323,7 +341,7 @@ try {
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'Los datos persisten tras recargar (IndexedDB)');
 
   console.log('▶ Respaldo y restauración');
-  await page.click('[data-testid=nav-config]');
+  await nav('config');
   await page.click('.tabs button:has-text("Datos y respaldos")');
   const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('button:has-text("Crear respaldo")')]);
   const backupPath = path.join(shots, 'web-respaldo.bodyos');

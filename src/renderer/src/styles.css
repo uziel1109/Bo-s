@@ -297,9 +297,57 @@ a {
     grid-column: span 2;
   }
 }
-@media (max-width: 1100px) {
+@media (max-width: 1250px) {
   .app {
     grid-template-columns: 72px 1fr;
+  }
+  /* Comprimida: solo íconos. Al tocarla se expande encima del contenido. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 72px;
+    z-index: 900;
+    padding-top: calc(18px + env(safe-area-inset-top));
+    transition: width 0.22s ease, box-shadow 0.22s ease;
+    overflow-x: hidden;
+    cursor: pointer;
+  }
+  .main {
+    grid-column: 2;
+  }
+  .sidebar.open {
+    width: 260px;
+    cursor: default;
+    background: var(--bg-2);
+    backdrop-filter: none;
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.35);
+  }
+  .sidebar.open .nav-item > span:not(.icon-tile),
+  .sidebar.open .brand-text,
+  .sidebar.open .sidebar-foot {
+    display: block !important;
+    white-space: nowrap;
+  }
+  .sidebar.open .sidebar-foot {
+    white-space: normal;
+    min-width: 230px;
+  }
+  .sidebar.open .nav-item,
+  .sidebar.open .brand {
+    justify-content: flex-start;
+  }
+  .sidebar.open .nav-item > .badge {
+    position: static;
+    margin-left: auto !important;
+  }
+  .nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 899;
+    background: rgba(5, 7, 10, 0.35);
+    animation: fadein 0.2s ease both;
   }
   .nav-item > span:not(.icon-tile),
   .brand-text,
@@ -325,9 +373,15 @@ a {
   .brand {
     justify-content: center;
   }
+}
+@media (max-width: 1100px) {
   .page {
     padding: 22px 20px 50px;
   }
+}
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @media (max-width: 860px) {
   .g2,

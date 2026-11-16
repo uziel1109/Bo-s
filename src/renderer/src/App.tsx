@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Activity, Brain, CalendarDays, Droplets, Dumbbell, HeartPulse, LayoutDashboard, LineChart, Pill, Settings as SettingsIcon, User, UtensilsCrossed } from 'lucide-react';
 import { useStore } from './store';
 import { Toasts } from './components/ui';
@@ -34,6 +34,9 @@ const NAV: { key: PageKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: 'config', label: 'Configuración', icon: SettingsIcon },
 ];
 
+/** Ancho en el que la barra lateral se muestra comprimida (solo íconos). */
+const COLLAPSED_QUERY = '(max-width: 1250px)';
+
 export function navigate(p: PageKey) {
   window.dispatchEvent(new CustomEvent('bodyos:nav', { detail: p }));
 }
@@ -41,6 +44,32 @@ export function navigate(p: PageKey) {
 export function App() {
   const store = useStore();
   const [page, setPage] = useState<PageKey>('dashboard');
+  // Barra lateral comprimida (iPad y ventanas angostas): se expande al tocarla y se comprime sola.
+  const [navOpen, setNavOpen] = useState(false);
+  const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collapsed = () => window.matchMedia(COLLAPSED_QUERY).matches;
+  const touchNav = () => {
+    if (idle.current) clearTimeout(idle.current);
+    idle.current = setTimeout(() => setNavOpen(false), 6000);
+  };
+  const openNav = () => {
+    setNavOpen(true);
+    touchNav();
+  };
+  const closeNav = () => {
+    if (idle.current) clearTimeout(idle.current);
+    setNavOpen(false);
+  };
+  const choose = (k: PageKey) => {
+    if (collapsed() && !navOpen) return openNav();
+    setPage(k);
+    closeNav();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeNav();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     const h = (e: Event) => setPage((e as CustomEvent<PageKey>).detail);
@@ -86,7 +115,17 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      {navOpen && <div className="nav-backdrop" onClick={closeNav} aria-hidden />}
+      <aside
+        className={`sidebar ${navOpen ? 'open' : ''}`}
+        data-testid="sidebar"
+        onClick={(e) => {
+          // Tocar cualquier parte de la barra comprimida la expande.
+          if (collapsed() && !navOpen && !(e.target as HTMLElement).closest('.nav-item')) openNav();
+        }}
+        onPointerMove={() => navOpen && touchNav()}
+        onScroll={() => navOpen && touchNav()}
+      >
         <div className="brand">
           <div className="brand-mark">OS</div>
           <div className="brand-text">
@@ -97,7 +136,7 @@ export function App() {
         {NAV.map((n, i) => (
           <div key={n.key}>
             {(i === 8 || i === 10) && <div className="nav-sep" />}
-            <button className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => setPage(n.key)} data-testid={`nav-${n.key}`} title={n.label}>
+            <button className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => choose(n.key)} data-testid={`nav-${n.key}`} title={n.label}>
               <IconTile module={n.key} />
               <span>{n.label}</span>
               {n.key === 'ia' && pending > 0 && <span className="badge accent" style={{ marginLeft: 'auto' }}>{pending}</span>}
