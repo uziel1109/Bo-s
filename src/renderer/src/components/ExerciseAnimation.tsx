@@ -28,8 +28,8 @@ function useClock(period: number, playing: boolean) {
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export function ExerciseAnimation({ exerciseId, size = 220, autoplay = true, phase, still }: { exerciseId: string; size?: number; autoplay?: boolean; phase?: number; still?: boolean }) {
-  const key = EXERCISE_ANIM[exerciseId];
+export function ExerciseAnimation({ exerciseId, animKey, size = 220, autoplay = true, phase, still }: { exerciseId?: string; animKey?: string; size?: number; autoplay?: boolean; phase?: number; still?: boolean }) {
+  const key = animKey ?? (exerciseId ? EXERCISE_ANIM[exerciseId] : undefined);
   const anim = key ? ANIMS[key] : null;
   const [playing, setPlaying] = useState(autoplay && !reduceMotion());
   const clock = useClock(anim?.period ?? 2.4, playing && phase == null);
@@ -189,13 +189,12 @@ export function AnimDebug() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${location.hash.includes('=') ? 3 : 6}, 1fr)`, gap: 8, padding: 12 }}>
       {Object.keys(ANIMS).filter((k) => !location.hash.includes('=') || location.hash.split('=')[1].split(',').includes(k)).map((k) => {
-        const id = Object.entries(EXERCISE_ANIM).find(([, a]) => a === k)?.[0] ?? k;
         return (
           <div key={k} className="card tight" style={{ padding: 6 }}>
             <div className="tiny">{k}</div>
             <div className="row nowrap" style={{ gap: 2 }}>
-              <ExerciseAnimation exerciseId={id} size={location.hash.includes('=') ? 190 : 92} phase={0} />
-              <ExerciseAnimation exerciseId={id} size={location.hash.includes('=') ? 190 : 92} phase={1} />
+              <ExerciseAnimation animKey={k} size={location.hash.includes('=') ? 190 : 92} phase={0} />
+              <ExerciseAnimation animKey={k} size={location.hash.includes('=') ? 190 : 92} phase={1} />
             </div>
           </div>
         );

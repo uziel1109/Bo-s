@@ -80,6 +80,14 @@ export const ANIMS: Record<string, Anim> = {
   leg_raise: { anchor: 'wrist', equip: 'none', props: ['bar_top'], a: { trunk: 90, thigh: -90, shin: -90, upperArm: 90, forearm: 90 }, b: { trunk: 100, thigh: -5, shin: -35, upperArm: 90, forearm: 90 } },
   lateral: { anchor: 'ankle', equip: 'dumbbell', front: 'lateral', a: STAND, b: STAND },
   fly: { anchor: 'ankle', equip: 'none', front: 'fly', a: STAND, b: STAND },
+  // Movilidad (sin carga)
+  mob_leg_swing: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 1.6, a: { ...STAND, upperArm: 0, forearm: 5, thigh2: -50, shin2: -58 }, b: { ...STAND, upperArm: 0, forearm: 5, thigh2: -122, shin2: -118 } },
+  mob_ankle: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 2.4, a: { ...STAND, thigh: -95, shin: -88, thigh2: -110, shin2: -100, upperArm: 0, forearm: 10 }, b: { ...STAND, trunk: 96, thigh: -58, shin: -128, thigh2: -116, shin2: -104, upperArm: 5, forearm: 10 } },
+  mob_deep_squat: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 3.4, a: { ...STAND, upperArm: -60, forearm: -10 }, b: { ...STAND, trunk: 70, thigh: -2, shin: -128, upperArm: -20, forearm: 0 } },
+  mob_hip_flexor: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 3, a: { ...STAND, trunk: 92, thigh: -15, shin: -100, thigh2: -105, shin2: -178, upperArm: -80, forearm: -80 }, b: { ...STAND, trunk: 96, thigh: -2, shin: -112, thigh2: -122, shin2: -178, upperArm: -80, forearm: -80 } },
+  mob_hinge: { anchor: 'ankle', equip: 'none', props: ['floor'], a: { ...STAND, upperArm: -120, forearm: -55 }, b: { ...STAND, trunk: 25, thigh: -80, shin: -98, upperArm: -150, forearm: -165 } },
+  mob_shoulder_pass: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 3, a: { ...STAND, upperArm: -70, forearm: -70 }, b: { ...STAND, upperArm: 125, forearm: 125 } },
+  mob_wall_slide: { anchor: 'ankle', equip: 'none', props: ['floor'], period: 2.6, a: { ...STAND, upperArm: -5, forearm: 88 }, b: { ...STAND, upperArm: 82, forearm: 92 } },
 };
 
 /** Animación de cada ejercicio de la biblioteca. */

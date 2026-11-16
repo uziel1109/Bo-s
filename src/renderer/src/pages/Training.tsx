@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Disc3, Flame, Check, Info, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
+import { Disc3, Flame, Check, Info, MapPin, Maximize2, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Chips, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
+import { GymMode } from '../components/GymMode';
+import { MobilityCard, useMobility } from '../components/Mobility';
+import { restDoneAlert, unlockAudio } from '../lib/gym';
+import { adaptDay, LOCATIONS, type LocationKey } from '@shared/training/travel';
 import { SimpleBars, SimpleLine } from '../components/charts';
 import { MuscleMap } from '../components/MuscleMap';
 import { ExerciseAnimation } from '../components/ExerciseAnimation';
@@ -10,7 +14,7 @@ import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REG
 import { generateRoutine, weeklySetTarget, type Routine, type RoutineDay } from '@shared/training/generator';
 import { platesFor, warmupSets } from '@shared/training/warmup';
 import { bestE1rm, deloadAdvice, exerciseHistory, muscleWeekStats, progressionAdvice, sessionVolume, type ProgressionAdvice } from '@shared/training/progression';
-import type { ExerciseLog, Muscle, SetLog, WorkoutSession } from '@shared/types';
+import type { Equipment, ExerciseLog, Muscle, SetLog, WorkoutSession } from '@shared/types';
 import { DAY_NAMES, formatDateShort, round, uid } from '@shared/utils';
 import { api } from '../api';
 
@@ -74,7 +78,7 @@ function buildLogs(day: RoutineDay, sessions: WorkoutSession[], deload: boolean)
 }
 
 function SessionLogger() {
-  const { data, today, reload, toast } = useApp();
+  const { data, today, reload, toast, profile } = useApp();
   const routine = data.routine;
   const dow = new Date(today + 'T12:00:00').getDay();
   const existing = data.sessions.find((s) => s.date === today && !s.completed) ?? null;
@@ -86,6 +90,16 @@ function SessionLogger() {
   const [, force] = useState(0);
   const [info, setInfo] = useState<Exercise | null>(null);
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
+  const [place, setPlace] = useState<LocationKey>('gimnasio');
+  const [customEq, setCustomEq] = useState<Equipment[]>(profile.equipment);
+  const [gym, setGym] = useState(false);
+  const [sessionDay, setSessionDay] = useState<RoutineDay | null>(null);
+  const sessionRef = useRef<WorkoutSession | null>(existing);
+  sessionRef.current = session;
+  const baseDay = routine?.days.find((d) => d.key === dayKey) ?? null;
+  const placeEq: Equipment[] | null = place === 'gimnasio' ? null : place === 'personalizado' ? customEq : LOCATIONS[place].equipment;
+  const adapted = useMemo(() => (baseDay && placeEq ? adaptDay(baseDay, placeEq, profile.injuries, profile.excludedExercises) : baseDay ? { day: baseDay, changes: [] } : null), [baseDay, placeEq?.join(), profile.injuries, profile.excludedExercises]);
+  const mobility = useMobility(adapted?.day, profile.injuries);
   const deloadAccepted = data.adjustments.find((a) => a.kind === 'recuperacion' && a.status === 'aceptado' && a.resolved_at && (Date.now() - new Date(a.resolved_at).getTime()) / 86400000 < 7);
   const startRef = useRef<number>(Date.now());
 
@@ -95,11 +109,7 @@ function SessionLogger() {
       force((x) => x + 1);
       if (Date.now() >= rest.until) {
         setRest(null);
-        try {
-          new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play();
-        } catch {
-          /* sin audio */
-        }
+        restDoneAlert();
       }
     }, 250);
     return () => clearInterval(t);
@@ -108,20 +118,25 @@ function SessionLogger() {
   if (!routine) return <Empty>No tienes una rutina activa. Genérala en “Mi rutina”.</Empty>;
 
   const start = () => {
-    const day = routine.days.find((d) => d.key === dayKey);
+    const day = adapted?.day;
     if (!day) return;
+    unlockAudio();
     startRef.current = Date.now();
-    setSession({ id: uid('s_'), date: today, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted), completed: 0, notes: null });
+    setSessionDay(day);
+    setSession({ id: uid('s_'), date: today, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted), completed: 0, notes: place !== 'gimnasio' ? `Entreno en: ${place === 'personalizado' ? 'equipo personalizado' : LOCATIONS[place].label}` : null });
   };
 
   const persist = async (s: WorkoutSession) => {
+    sessionRef.current = s;
     setSession(s);
     await api.upsert('workout_sessions', s);
   };
 
   const updateSet = (ei: number, si: number, patch: Partial<SetLog>) => {
-    if (!session) return;
-    const s = structuredClone(session);
+    // Usa la versión más reciente (el modo gimnasio puede hacer dos cambios seguidos).
+    const cur = sessionRef.current;
+    if (!cur) return;
+    const s = structuredClone(cur);
     s.exercises[ei].sets[si] = { ...s.exercises[ei].sets[si], ...patch };
     persist(s);
   };
@@ -133,8 +148,14 @@ function SessionLogger() {
     const dur = session.duration_min ?? Math.round((Date.now() - startRef.current) / 60000);
     await api.upsert('workout_sessions', { ...session, completed: 1, duration_min: dur || null });
     await reload();
+    setGym(false);
     setSession(null);
     toast('¡Sesión guardada!');
+  };
+
+  const rdFor = (exerciseId: string) => {
+    const k = session?.day_key;
+    return (sessionDay?.key === k ? sessionDay?.exercises.find((x) => x.exerciseId === exerciseId) : undefined) ?? data.routine?.days.find((d) => d.key === k)?.exercises.find((x) => x.exerciseId === exerciseId);
   };
 
   if (!session)
@@ -156,14 +177,54 @@ function SessionLogger() {
             </button>
           </div>
           {!defaultDay && <p className="small muted mt8">Hoy no está programado un entrenamiento de fuerza; puedes adelantar o recuperar una sesión.</p>}
+          <div className="mt16">
+            <div className="small" style={{ fontWeight: 650, marginBottom: 6 }}>
+              <MapPin size={14} style={{ verticalAlign: -2 }} /> ¿Dónde entrenas hoy?
+            </div>
+            <Seg value={place} onChange={setPlace} options={[{ value: 'gimnasio', label: 'Mi gimnasio' }, ...Object.entries(LOCATIONS).map(([k, v]) => ({ value: k as LocationKey, label: v.label })), { value: 'personalizado', label: 'Elegir equipo' }]} />
+            {place === 'personalizado' && (
+              <div className="mt8">
+                <Chips value={customEq} onChange={setCustomEq} options={(Object.keys(EQUIPMENT_LABEL) as Equipment[]).map((k) => ({ value: k, label: EQUIPMENT_LABEL[k] }))} />
+              </div>
+            )}
+            {adapted && adapted.changes.length > 0 && (
+              <div className="col mt12" style={{ gap: 4 }} data-testid="travel-changes">
+                {adapted.changes.map((c) => (
+                  <div key={c.from.exerciseId} className="small">
+                    <span className="muted">{c.from.name}</span> → {c.to ? <b>{c.to.name}</b> : <i className="muted">se omite</i>} <span className="tiny muted">· {c.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {adapted && placeEq && adapted.changes.length === 0 && <p className="small muted mt8">Con ese equipo puedes hacer tu sesión tal cual.</p>}
+          </div>
         </Card>
-        {dayKey && <DayPreview day={routine.days.find((d) => d.key === dayKey)!} />}
+        {mobility && <MobilityCard routine={mobility} />}
+        {adapted && <DayPreview day={adapted.day} />}
       </div>
     );
 
   const restLeft = rest ? Math.max(0, Math.ceil((rest.until - Date.now()) / 1000)) : 0;
   return (
     <div className="col" style={{ gap: 14 }}>
+      {gym && (
+        <GymMode
+          session={session}
+          rest={rest}
+          restSecFor={(i) => rdFor(session.exercises[i].exerciseId)?.restSec ?? 120}
+          lastFor={(i) => {
+            const h = exerciseHistory(data.sessions, session.exercises[i].exerciseId);
+            const l = h[h.length - 1]?.log;
+            return l ? l.sets.filter((x) => x.done).map((x) => `${x.weight}×${x.reps}`).join(', ') : null;
+          }}
+          onUpdateSet={updateSet}
+          onStartRest={(sec) => setRest({ until: Date.now() + sec * 1000, total: sec })}
+          onAddRest={(sec) => setRest((r) => (r ? { until: r.until + sec * 1000, total: r.total + sec } : r))}
+          onSkipRest={() => setRest(null)}
+          onExit={() => setGym(false)}
+          onFinish={finish}
+        />
+      )}
       <div className="row between">
         <div>
           <h2>{session.day_name}</h2>
@@ -191,6 +252,16 @@ function SessionLogger() {
           >
             Descartar
           </button>
+          <button
+            className="btn"
+            onClick={() => {
+              unlockAudio();
+              setGym(true);
+            }}
+            data-testid="gym-open"
+          >
+            <Maximize2 /> Modo gimnasio
+          </button>
           <button className="btn primary" onClick={finish} data-testid="session-finish">
             <Check /> Finalizar sesión
           </button>
@@ -201,7 +272,7 @@ function SessionLogger() {
         const hist = exerciseHistory(data.sessions, e.exerciseId).map((h) => h.log);
         const adv = progressionAdvice(hist);
         const last = hist[hist.length - 1];
-        const rd = data.routine?.days.find((d) => d.key === session.day_key)?.exercises.find((x) => x.exerciseId === e.exerciseId);
+        const rd = rdFor(e.exerciseId);
         return (
           <div className="ex-card" key={ei} data-testid={`ex-${ei}`}>
             <div className="row between mb8">
