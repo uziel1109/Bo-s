@@ -132,3 +132,23 @@ export function distributeMacros(t: { kcal: number; protein: number; carbs: numb
     fiber: Math.round((t.fiber * weight[s]) / tw),
   }));
 }
+
+/**
+ * Aplica un cambio de calorías conservando la proteína: el ajuste se reparte 70 % carbohidratos / 30 % grasa,
+ * respetando un mínimo de grasa del 20 % de las calorías.
+ */
+export function adjustTargetsKcal(t: NutritionTargets, newKcal: number, reason: string): NutritionTargets {
+  const delta = newKcal - t.kcal;
+  let fat = t.fat + (delta * 0.3) / 9;
+  fat = Math.max(fat, (newKcal * 0.2) / 9);
+  const carbs = Math.max(0, (newKcal - t.protein * 4 - fat * 9) / 4);
+  return {
+    ...t,
+    kcal: Math.round(newKcal),
+    fat: Math.round(fat),
+    carbs: Math.round(carbs),
+    deficit: Math.round(t.tdee - newKcal),
+    deficitPct: round(((t.tdee - newKcal) / t.tdee) * 100, 1),
+    rationale: [...t.rationale.filter((r) => !r.startsWith('Ajuste aceptado')), `Ajuste aceptado: ${reason}`],
+  };
+}

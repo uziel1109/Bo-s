@@ -124,3 +124,15 @@ describe('Generador de dietas', () => {
     expect(plan.days.every((d) => d.meals.length === 4)).toBe(true);
   });
 });
+
+import { adjustTargetsKcal } from '../src/shared/nutrition/targets';
+describe('Ajuste de calorías aceptado', () => {
+  it('conserva la proteína y cuadra la energía', () => {
+    const t = calculateTargets({ profile, weightKg: 95, bfPct: 30, tdee: 2800, bmr: 1900, tdeeMethod: 'x', scenario: 'moderado', flags: [] });
+    const n = adjustTargetsKcal(t, t.kcal - 150, 'estancamiento');
+    expect(n.protein).toBe(t.protein);
+    expect(n.kcal).toBe(t.kcal - 150);
+    expect(Math.abs(n.protein * 4 + n.carbs * 4 + n.fat * 9 - n.kcal)).toBeLessThan(15);
+    expect(n.deficit).toBe(t.deficit + 150);
+  });
+});
