@@ -96,6 +96,18 @@ function Appearance() {
           { value: 'system', label: 'Según el sistema' },
         ]}
       />
+      <div className="mt16">
+        <div className="small" style={{ fontWeight: 650, marginBottom: 6 }}>Nivel de detalle</div>
+        <Seg
+          value={settings.details === 'on' ? 'on' : 'off'}
+          onChange={(v) => setSetting('details', v)}
+          options={[
+            { value: 'off', label: 'Sencillo' },
+            { value: 'on', label: 'Con detalles técnicos' },
+          ]}
+        />
+        <p className="tiny muted mt8">Sencillo oculta fórmulas, márgenes de error, desgloses y evidencia científica. Siguen disponibles en cualquier momento cambiando aquí.</p>
+      </div>
     </Card>
   );
 }

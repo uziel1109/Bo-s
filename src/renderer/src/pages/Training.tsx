@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Disc3, Flame, Check, Info, MapPin, Maximize2, Play, Plus, RefreshCw, Repeat, Search, Timer, Trash2, Trophy } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Chips, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Chips, Claims, DetailsHint, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { GymMode } from '../components/GymMode';
 import { MobilityCard, useMobility } from '../components/Mobility';
 import { restDoneAlert, unlockAudio } from '../lib/gym';
@@ -630,7 +630,8 @@ function RoutineView() {
           </div>
         </Card>
       </div>
-      <Card title="Justificación">
+      <DetailsHint what="justificación y series por músculo" />
+      <Card title="Justificación" className="tech">
         <Claims items={r.rationale.map((t) => ({ kind: 'recomendacion' as const, text: t }))} />
       </Card>
       <div className="grid g2">
@@ -663,7 +664,7 @@ function RoutineView() {
           </Card>
         ))}
       </div>
-      <Card title="Series semanales planificadas por músculo" hint="Principal = 1 serie · secundario = 0.5">
+      <Card className="tech" title="Series semanales planificadas por músculo" hint="Principal = 1 serie · secundario = 0.5">
         <SimpleBars
           layout="vertical"
           height={Math.max(220, Object.keys(r.weeklySets).length * 26)}

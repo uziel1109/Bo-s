@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarHeart, Coffee, Flag, PartyPopper, Plus, Trash2, Wheat } from 'lucide-react';
 import { useApp } from '../store';
-import { Alert, Card, Chips, Claims, ConfirmButton, Field, fmt, NumInput, Seg } from './ui';
+import { Alert, Card, Chips, Claims, ConfirmButton, DetailsHint, Field, fmt, NumInput, Seg } from './ui';
 import { IconTile } from './visual';
 import { DAY_KIND_LABEL, dayPlanFor, etaWithBreaks, maintenanceKcalOn, maintenanceWeeks, nearGoal, nextDietBreak, weekPlan, type DayKind, type DietEvent, type MaintenancePhase, type PhaseSettings } from '@shared/nutrition/phases';
 import { calorieFloor } from '@shared/safety/screening';
@@ -77,7 +77,8 @@ export function PhasesPanel() {
 
       <EventsCard ps={ps} save={save} />
 
-      <Card title="Qué dice la evidencia">
+      <DetailsHint what="evidencia científica" />
+      <Card title="Qué dice la evidencia" className="tech">
         <Claims
           items={[
             { kind: 'dato', text: 'El cambio de peso depende del promedio semanal de calorías, no de un día aislado. Por eso un evento se puede compensar repartiendo el ahorro en los días previos.' },

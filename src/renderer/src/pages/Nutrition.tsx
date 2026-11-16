@@ -56,25 +56,22 @@ function MacroRing({ label, value, target, unit, color, big }: { label: string; 
 
 type Tab = 'hoy' | 'plan' | 'super' | 'prep' | 'fases' | 'alimentos' | 'recetas' | 'objetivos';
 
+const GROUPS: { key: string; label: string; tabs: { value: Tab; label: string }[] }[] = [
+  { key: 'hoy', label: 'Registro diario', tabs: [{ value: 'hoy', label: 'Registro diario' }] },
+  { key: 'plan', label: 'Plan y súper', tabs: [{ value: 'plan', label: 'Plan de comidas' }, { value: 'super', label: 'Lista del súper' }, { value: 'prep', label: 'Preparación' }] },
+  { key: 'fases', label: 'Fases y eventos', tabs: [{ value: 'fases', label: 'Fases y eventos' }] },
+  { key: 'base', label: 'Alimentos y recetas', tabs: [{ value: 'alimentos', label: 'Alimentos' }, { value: 'recetas', label: 'Recetas y frecuentes' }] },
+  { key: 'objetivos', label: 'Objetivos', tabs: [{ value: 'objetivos', label: 'Objetivos' }] },
+];
+
 export function Nutrition() {
   const [tab, setTab] = useState<Tab>('hoy');
+  const group = GROUPS.find((g) => g.tabs.some((t) => t.value === tab))!;
   return (
     <div className="page">
-      <Hero module="nutricion" title="Nutrición" sub="Registro diario, plan de comidas, base de datos de alimentos y objetivos." />
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { value: 'hoy', label: 'Registro diario' },
-          { value: 'plan', label: 'Plan de comidas' },
-          { value: 'super', label: 'Lista del súper' },
-          { value: 'prep', label: 'Preparación' },
-          { value: 'fases', label: 'Fases y eventos' },
-          { value: 'alimentos', label: 'Alimentos' },
-          { value: 'recetas', label: 'Recetas y frecuentes' },
-          { value: 'objetivos', label: 'Objetivos' },
-        ]}
-      />
+      <Hero module="nutricion" title="Nutrición" sub="Lo que comes, tu plan y tus objetivos." />
+      <Tabs value={group.key} onChange={(k) => setTab(GROUPS.find((g) => g.key === k)!.tabs[0].value)} tabs={GROUPS.map((g) => ({ value: g.key, label: g.label }))} />
+      {group.tabs.length > 1 && <Tabs sub value={tab} onChange={setTab} tabs={group.tabs} />}
       {tab === 'hoy' && <DailyLog />}
       {tab === 'plan' && <MealPlanView onShopping={() => setTab('super')} />}
       {tab === 'super' && <ShoppingView onPlan={() => setTab('plan')} />}
@@ -144,10 +141,12 @@ function DailyLog() {
             <MacroRing label="Proteína" value={totals.protein} target={t.protein} unit="g" color="var(--m-pink)" />
             <MacroRing label="Carbos" value={totals.carbs} target={t.carbs} unit="g" color="var(--m-amber)" />
             <MacroRing label="Grasas" value={totals.fat} target={t.fat} unit="g" color="var(--m-violet)" />
-            <MacroRing label="Fibra" value={totals.fiber} target={t.fiber} unit="g" color="var(--m-green)" />
+            <span className="tech">
+              <MacroRing label="Fibra" value={totals.fiber} target={t.fiber} unit="g" color="var(--m-green)" />
+            </span>
           </div>
         </Card>
-        <Card className="span3" title="Últimos 14 días">
+        <Card className="span3 tech" title="Últimos 14 días">
           <IntakeArea data={last14} target={t.kcal} height={170} />
         </Card>
       </div>
@@ -180,51 +179,37 @@ function DailyLog() {
             }
           >
             {items.length === 0 ? (
-              <button className="empty-add" onClick={() => setAdding(slot)}>
-                <Plus size={15} /> Agregar a {MEAL_LABEL[slot].toLowerCase()}
-              </button>
+null
             ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Alimento</th>
-                    <th className="right">Cantidad</th>
-                    <th className="right">kcal</th>
-                    <th className="right">Prot.</th>
-                    <th className="right">Carb.</th>
-                    <th className="right">Grasa</th>
-                    <th className="right">Fibra</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((l) => (
-                    <tr key={l.id}>
-                      <td>{l.name}</td>
-                      <td className="right">{fmt(l.grams)} g</td>
-                      <td className="right">{fmt(l.kcal)}</td>
-                      <td className="right">{fmt(l.protein, 1)}</td>
-                      <td className="right">{fmt(l.carbs, 1)}</td>
-                      <td className="right">{fmt(l.fat, 1)}</td>
-                      <td className="right">{fmt(l.fiber, 1)}</td>
-                      <td className="right" style={{ whiteSpace: 'nowrap' }}>
-                        <button className="btn ghost icon sm" onClick={() => setEditing(l)}>
-                          <Pencil />
-                        </button>
-                        <button
-                          className="btn ghost icon sm"
-                          onClick={async () => {
-                            await api.remove('food_logs', l.id);
-                            await reload();
-                          }}
-                        >
-                          <Trash2 />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="food-rows">
+                {items.map((l) => (
+                  <div key={l.id} className="food-row">
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="food-name">{l.name}</div>
+                      <div className="tiny muted mono">
+                        {fmt(l.grams)} g · P {fmt(l.protein, 1)} · C {fmt(l.carbs, 1)} · G {fmt(l.fat, 1)}
+                        <span className="tech"> · Fibra {fmt(l.fiber, 1)}</span>
+                      </div>
+                    </div>
+                    <div className="mono" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{fmt(l.kcal)} kcal</div>
+                    <div className="row nowrap" style={{ gap: 2 }}>
+                      <button className="btn ghost icon sm" onClick={() => setEditing(l)} title="Editar">
+                        <Pencil />
+                      </button>
+                      <button
+                        className="btn ghost icon sm"
+                        title="Eliminar"
+                        onClick={async () => {
+                          await api.remove('food_logs', l.id);
+                          await reload();
+                        }}
+                      >
+                        <Trash2 />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
             {items.length > 0 && slot !== 'extra' && <div className="mt8"><SatietyRating date={date} slot={slot} /></div>}
           </Card>
@@ -648,7 +633,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
                 </div>
               ))}
             </div>
-            <div className="tiny muted mt8">
+            <div className="tiny muted mt8 tech">
               Objetivo de la comida: {m.target.kcal} kcal · P {m.target.protein} · C {m.target.carbs} · G {m.target.fat}
             </div>
           </Card>
@@ -671,7 +656,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           {n}
         </Alert>
       ))}
-      <p className="small muted">Valores calculados con la base de datos de alimentos (USDA FoodData Central, referencia). Pesa los alimentos en la forma indicada (crudo/cocido).</p>
+      <p className="small muted tech">Valores calculados con la base de datos de alimentos (USDA FoodData Central, referencia). Pesa los alimentos en la forma indicada (crudo/cocido).</p>
       {subFor && (
         <SubstituteModal
           item={subFor.item}

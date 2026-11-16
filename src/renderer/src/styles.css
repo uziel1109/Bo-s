@@ -2281,3 +2281,46 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 12px 16px;
 }
+
+/* ── Nivel de detalle: modo sencillo oculta lo técnico */
+:root:not([data-details='on']) .tech {
+  display: none !important;
+}
+.tabs.sub {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin-top: -8px;
+  margin-bottom: 18px;
+}
+.tabs.sub button {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+.tabs.sub button.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.card-head:last-child {
+  margin-bottom: 0;
+}
+:root[data-details='on'] .simple-only {
+  display: none !important;
+}
+.details-hint {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.details-hint:hover {
+  color: var(--text);
+}

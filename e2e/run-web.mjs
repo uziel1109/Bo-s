@@ -68,7 +68,8 @@ try {
 
   console.log('▶ Lista del súper');
   await page.click('[data-testid=nav-nutricion]');
-  await page.click('.tabs button:has-text("Plan de comidas")');
+  await page.click('.tabs button:has-text("Plan y súper")');
+  await page.click('.tabs.sub button:has-text("Plan de comidas")');
   await page.click('[data-testid=gen-mealplan]');
   await page.click('[data-testid=go-shopping]');
   await page.click('[data-testid=shopping-create]');
@@ -83,7 +84,8 @@ try {
   await page.reload();
   await page.waitForSelector('[data-testid=dash-weight]', { timeout: 20000 });
   await page.click('[data-testid=nav-nutricion]');
-  await page.click('.tabs button:has-text("Lista del súper")');
+  await page.click('.tabs button:has-text("Plan y súper")');
+  await page.click('.tabs.sub button:has-text("Lista del súper")');
   await page.waitForSelector('.shop-item');
   check((await page.locator('.shop-item.done').count()) === 1, 'La lista y lo marcado persisten tras recargar');
   await page.click('[data-testid=nav-dashboard]');
@@ -176,7 +178,8 @@ try {
   await page.waitForSelector('[data-testid=event-row]');
   check((await page.textContent('[data-testid=event-row]')).includes('Boda'), 'Evento agregado con su objetivo de calorías');
   await page.screenshot({ path: path.join(shots, `web-ipad-fases-${browserName}.png`) });
-  await page.click('.tabs button:has-text("Plan de comidas")');
+  await page.click('.tabs button:has-text("Plan y súper")');
+  await page.click('.tabs.sub button:has-text("Plan de comidas")');
   await page.locator('[data-testid=meal-recipe]').first().click();
   await page.waitForSelector('[data-testid=recipe-option]');
   const nRecipes = await page.locator('[data-testid=recipe-option]').count();

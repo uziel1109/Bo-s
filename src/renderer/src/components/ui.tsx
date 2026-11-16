@@ -179,9 +179,9 @@ export function Seg<T extends string>({ value, options, onChange }: { value: T; 
   );
 }
 
-export function Tabs<T extends string>({ value, tabs, onChange }: { value: T; tabs: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
+export function Tabs<T extends string>({ value, tabs, onChange, sub }: { value: T; tabs: { value: T; label: ReactNode }[]; onChange: (v: T) => void; sub?: boolean }) {
   return (
-    <div className="tabs">
+    <div className={`tabs ${sub ? 'sub' : ''}`}>
       {tabs.map((t) => (
         <button key={t.value} className={t.value === value ? 'on' : ''} onClick={() => onChange(t.value)}>
           {t.label}
@@ -274,6 +274,19 @@ export function ConfirmButton({ onConfirm, children, confirmText = '¿Confirmar?
       }}
     >
       {children}
+    </button>
+  );
+}
+
+/** En modo sencillo, avisa que hay información técnica oculta y permite mostrarla. */
+export function DetailsHint({ what = 'fórmulas, desgloses y evidencia' }: { what?: string }) {
+  return (
+    <button
+      type="button"
+      className="details-hint simple-only"
+      onClick={() => window.dispatchEvent(new CustomEvent('bodyos:details', { detail: 'on' }))}
+    >
+      Mostrar detalles técnicos ({what})
     </button>
   );
 }

@@ -84,7 +84,8 @@ async function main() {
 
   console.log('▶ Plan de comidas');
   await win.click('[data-testid=nav-nutricion]');
-  await win.click('.tabs button:has-text("Plan de comidas")');
+  await win.click('.tabs button:has-text("Plan y súper")');
+  await win.click('.tabs.sub button:has-text("Plan de comidas")');
   await win.click('[data-testid=gen-mealplan]');
   await win.waitForSelector('text=Día 1: totales vs objetivo');
   await shot(win, '05-plan-comidas');

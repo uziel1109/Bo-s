@@ -43,7 +43,7 @@ export function Cardio() {
         <Card tight>
           <Stat label="Cardio esta semana" value={week.minutes} unit="min" foot={`Plan: ~${plan.weeklyMinutesTarget} min · ${week.sessions} sesiones`} />
         </Card>
-        <Card tight>
+        <Card tight className="tech">
           <Stat label="FC máxima estimada" value={zones.max} unit="lpm" foot="Tanaka: 208 − 0.7 × edad" />
         </Card>
         <Card tight>
@@ -90,7 +90,7 @@ export function Cardio() {
             <Claims items={plan.notes.map((n) => ({ kind: 'recomendacion' as const, text: n }))} />
           </div>
         </Card>
-        <Card title="Zonas de frecuencia cardiaca">
+        <Card title="Zonas de frecuencia cardiaca" className="tech">
           {betaBlocker && <Alert kind="warn">Tomas un betabloqueador: las zonas por frecuencia cardiaca no son válidas. Usa la escala de esfuerzo percibido (RPE).</Alert>}
           <table className="table">
             <tbody>

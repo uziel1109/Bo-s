@@ -4,6 +4,10 @@
 
 Abre https://uziel1109.github.io/Bo-s/ en Safari → **Compartir** → **Agregar a pantalla de inicio**. Abre la app desde su ícono. Si ya usas BODY OS en tu computadora, crea allí un respaldo, guárdalo en iCloud Drive o envíalo al iPad, y en el primer paso del asistente toca **Restaurar un respaldo**.
 
+## 0.1 Vista sencilla o con detalles
+
+La app abre en **vista sencilla**: muestra lo que necesitas para el día y oculta fórmulas, márgenes de error, desgloses de cálculo y evidencia científica. Para verlos, toca *Mostrar detalles técnicos* donde aparezca, o ve a Configuración → Apariencia → Nivel de detalle → *Con detalles técnicos*.
+
 ## 1. Primer inicio
 
 Al abrir BODY OS por primera vez aparece el **asistente de configuración** (6 pasos). Los valores iniciales son provisionales: reemplázalos con tus datos.
@@ -45,6 +49,8 @@ Cada afirmación lleva una etiqueta:
 | **Recomendación** | Acción sugerida. |
 
 ## 4. Nutrición
+
+Nutrición tiene 5 pestañas: *Registro diario*, *Plan y súper* (plan de comidas, lista del súper y preparación), *Fases y eventos*, *Alimentos y recetas* y *Objetivos*.
 
 - **Objetivos:** explica de dónde sale cada número y la distribución por comida.
 - **Plan de comidas:** genera 1 o 7 días con alimentos accesibles en México. Pulsa ↻ junto a un alimento para ver **sustitutos equivalentes**, o *Registrar hoy* para pasar una comida del plan a tu registro.

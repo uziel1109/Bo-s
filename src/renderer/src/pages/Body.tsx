@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, fmt, Seg, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Claims, DetailsHint, fmt, Seg, Stat, Tabs } from '../components/ui';
 import { ScenarioChart } from '../components/charts';
 import { BodyLogModal } from '../components/QuickLogs';
 import { METHOD_LABEL, METHOD_ERROR, ACTIVITY_BASE } from '@shared/body/composition';
@@ -37,7 +37,7 @@ function Composition() {
     <div className="col" style={{ gap: 16 }}>
       {!c.bf.isMeasured && (
         <Alert kind="warn">
-          Tu % de grasa es una <b>estimación</b> ({c.bf.label}) con un error típico de ±{c.bf.error} puntos. Úsalo para ver tendencias; para un valor más preciso registra una medición (DEXA, BOD POD, plicometría por un profesional).
+          Tu % de grasa es una <b>estimación</b> (±{c.bf.error} puntos): úsalo para ver tendencias.<span className="tech"> Método: {c.bf.label}. Para un valor más preciso registra una medición (DEXA, BOD POD, plicometría por un profesional).</span>
         </Alert>
       )}
       <div className="grid g4">
@@ -55,7 +55,7 @@ function Composition() {
         </Card>
       </div>
       <div className="grid g2">
-        <Card title="Comparación de métodos de estimación">
+        <Card title="Comparación de métodos de estimación" className="tech">
           <table className="table">
             <thead>
               <tr>
@@ -94,7 +94,7 @@ function Composition() {
           </table>
           <p className="small muted mt8">Se usa la mejor opción disponible: medición registrada → US Navy (cintura y cuello) → RFM (cintura) → CUN-BAE (IMC).</p>
         </Card>
-        <Card title="Gasto energético">
+        <Card title="Gasto energético" className="tech">
           <table className="table">
             <tbody>
               <tr>
@@ -138,7 +138,8 @@ function Composition() {
           <p className="small muted mt8">{st.observed.tdee ? st.tdee.method : st.observed.explanation}</p>
         </Card>
       </div>
-      <Card title="Limitaciones de las estimaciones">
+      <DetailsHint />
+      <Card title="Limitaciones de las estimaciones" className="tech">
         <Claims items={LIMITATIONS.map((t) => ({ kind: 'hipotesis' as const, text: t }))} />
       </Card>
     </div>

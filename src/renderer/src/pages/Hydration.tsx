@@ -75,7 +75,7 @@ export function Hydration() {
             </button>
           </div>
         </Card>
-        <Card title="Cómo se calcula">
+        <Card title="Cómo se calcula" className="tech">
           <table className="table">
             <tbody>
               <tr>

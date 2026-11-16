@@ -1,5 +1,5 @@
 // Estado global de la interfaz: carga los registros desde la base local y calcula el estado del motor.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api } from './api';
 import { computeState, type ActivePlan, type AppData, type EngineState } from '@shared/engine';
 import type { Adjustment, BodyLog, CardioLog, Food, FoodLog, Profile, RecoveryLog, StepsLog, WaterLog, WorkoutSession } from '@shared/types';
@@ -65,6 +65,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [today, setToday] = useState(todayFn());
   const [raw, setRaw] = useState<Omit<Store, 'loading' | 'error' | 'today' | 'state' | 'reload' | 'saveProfile' | 'setSetting' | 'activatePlan' | 'toast' | 'toasts'> | null>(null);
   const [toasts, setToasts] = useState<Store['toasts']>([]);
+  const setSettingRef = useRef<((k: string, v: unknown) => Promise<void>) | null>(null);
 
   const toast = useCallback((msg: string, kind: 'ok' | 'error' = 'ok') => {
     const id = uid();
@@ -149,6 +150,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', apply);
   }, [raw?.settings.theme]);
 
+  // Nivel de detalle: los elementos con clase "tech" solo se muestran con detalles técnicos.
+  useEffect(() => {
+    const h = (e: Event) => void setSettingRef.current?.('details', (e as CustomEvent<string>).detail);
+    window.addEventListener('bodyos:details', h);
+    return () => window.removeEventListener('bodyos:details', h);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.details = raw?.settings.details === 'on' ? 'on' : 'off';
+  }, [raw?.settings.details]);
+
   const state = useMemo(() => {
     if (!raw?.data) return null;
     try {
@@ -176,6 +187,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [reload],
   );
+  setSettingRef.current = setSetting;
 
   const activatePlan = useCallback(
     async (plan: Omit<ActivePlan, 'id' | 'created_at'>) => {

@@ -150,7 +150,7 @@ export function Dashboard() {
                 </span>
               )}
               {real.status === 'sin_perdida' && <span className="eta-pill real">A tu ritmo real: sin bajar aún</span>}
-              <span className="small muted">
+              <span className="small muted tech">
                 ≈ {fmt(comp.fatToLose, 1)} kg de grasa por perder · ±{comp.bf.error} pts ({comp.bf.label})
               </span>
             </div>
@@ -165,7 +165,7 @@ export function Dashboard() {
       </section>
 
       {/* Métricas corporales */}
-      <div className="grid g4 mb16">
+      <div className="grid g2 mb16">
         <MetricTile
           testId="dash-weight"
           icon={Scale}
@@ -183,7 +183,6 @@ export function Dashboard() {
             </>
           }
         />
-        <MetricTile icon={Dumbbell} color="var(--m-lime)" label="Masa libre de grasa (est.)" value={fmt(comp.leanMass, 1)} unit="kg" foot={`Masa grasa ≈ ${fmt(comp.fatMass, 1)} kg`} />
         <MetricTile
           icon={Ruler}
           color="var(--m-amber)"
@@ -192,7 +191,6 @@ export function Dashboard() {
           unit="cm"
           foot={waistDelta != null ? <span className={waistDelta <= 0 ? 'delta-down' : 'delta-up'}>{waistDelta > 0 ? '+' : ''}{fmt(waistDelta, 1)} cm desde el inicio</span> : 'Mídela cada lunes'}
         />
-        <MetricTile icon={Flame} color="var(--m-orange)" label="Gasto diario estimado" value={fmt(st.tdee.tdee)} unit="kcal" foot={st.observed.tdee ? 'Ajustado con tus datos reales' : 'Por fórmula · se ajustará con tus datos'} />
       </div>
 
       <div className="grid g2 mb16">
@@ -220,7 +218,7 @@ export function Dashboard() {
               { label: 'Pasos', value: stepsToday, max: steps.target, color: 'var(--m-lime)', display: fmt(stepsToday), unit: `/ ${fmt(steps.target)}` },
             ]}
           />
-          <div className="row between small mt16">
+          <div className="row between small mt16 tech">
             <span className="muted">
               Carbos <b style={{ color: 'var(--text)' }}>{fmt(intake?.carbs ?? 0)}</b>/{t.carbs} g · Grasas <b style={{ color: 'var(--text)' }}>{fmt(intake?.fat ?? 0)}</b>/{t.fat} g
             </span>
@@ -262,21 +260,6 @@ export function Dashboard() {
                 Próxima: <b style={{ color: 'var(--text)' }}>{nextDay.name}</b> · {DAY_NAMES[nextDay.weekday]}
               </div>
             )}
-            <div className="row small" style={{ gap: 14 }}>
-              <span className="row" style={{ gap: 6 }}>
-                <Activity size={14} color="var(--m-lime)" />
-                {strength.total ? (
-                  <>
-                    <b className="delta-down">{strength.improved}↑</b> <b className="delta-up">{strength.declined}↓</b> fuerza
-                  </>
-                ) : (
-                  <span className="muted">Fuerza: sin datos aún</span>
-                )}
-              </span>
-              <span className="row" style={{ gap: 6 }}>
-                <Footprints size={14} color="var(--m-pink)" /> {cardio.minutes} min de cardio
-              </span>
-            </div>
             <StepsInput />
           </div>
         </Card>
@@ -284,63 +267,39 @@ export function Dashboard() {
       </div>
 
       <div className="grid g2 mb16">
-        {/* Qué hacer hoy */}
-        <Card title="Qué hacer hoy" icon={<Brain />} actions={<button className="btn sm" onClick={() => navigate('ia')}>Asistente</button>}>
-          <Claims items={coach.today} />
-        </Card>
+        <CoachCard coach={coach} pending={data.adjustments.filter((a) => a.status === 'pendiente').length} />
         <ChallengesCard />
       </div>
 
-      <div className="grid g2 mb16">
-        <Card title="Peso y tendencia" hint="90 días · puntos = registros, línea = tendencia">
-          <WeightTrendChart data={trend} goal={comp.goalWeight} />
-        </Card>
-        <Card title="Cintura" hint="Confirma si el peso perdido es grasa">
-          <SimpleLine data={data.bodyLogs.filter((l) => l.waist).map((l) => ({ date: l.date, waist: l.waist }))} dataKey="waist" name="Cintura" unit="cm" height={240} color="var(--s3)" />
-        </Card>
-      </div>
-
-      <div className="grid g4">
-        <div className="card coach-card" style={{ ['--cc' as string]: 'var(--m-green)' }}>
-          <div className="card-head">
-            <div className="title">
-              <CheckCircle2 /> Lo estás haciendo bien
-            </div>
-          </div>
-          <Claims items={coach.good} />
-        </div>
-        <div className="card coach-card" style={{ ['--cc' as string]: 'var(--m-amber)' }}>
-          <div className="card-head">
-            <div className="title">
-              <Lightbulb /> Qué mejorar
-            </div>
-          </div>
-          <Claims items={coach.improve} />
-        </div>
-        <div className="card coach-card" style={{ ['--cc' as string]: 'var(--m-red)' }}>
-          <div className="card-head">
-            <div className="title">
-              <AlertTriangle /> Necesita atención
-            </div>
-          </div>
-          <Claims items={coach.attention} />
-        </div>
-        <div className="card coach-card" style={{ ['--cc' as string]: 'var(--m-violet)' }}>
-          <div className="card-head">
-            <div className="title">
-              <Brain /> Ajustes recomendados
-            </div>
-            <button className="btn sm" onClick={() => navigate('ia')}>
-              Revisar
-            </button>
-          </div>
-          <Claims items={coach.adjustments} />
-        </div>
-      </div>
+      <Card title="Peso y tendencia" hint="Últimos 90 días" className="mb16">
+        <WeightTrendChart data={trend} goal={comp.goalWeight} />
+      </Card>
 
       {modal === 'peso' && <BodyLogModal onClose={() => setModal(null)} />}
       {modal === 'recuperacion' && <RecoveryModal onClose={() => setModal(null)} />}
       {photo && <FoodPhotoModal date={today} slot={slotForNow(profile.mealsPerDay)} onClose={() => setPhoto(false)} />}
     </div>
+  );
+}
+
+/** Lo esencial del coach en una sola tarjeta: primero lo urgente, luego qué mejorar y un logro. */
+function CoachCard({ coach, pending }: { coach: ReturnType<typeof dailyCoach>; pending: number }) {
+  const items = [
+    ...coach.attention.filter((c) => c.kind !== 'estimacion').slice(0, 1).map((c) => ({ ...c, tone: 'var(--m-red)', Icon: AlertTriangle })),
+    ...coach.improve.slice(0, 2).map((c) => ({ ...c, tone: 'var(--m-amber)', Icon: Lightbulb })),
+    ...coach.good.slice(0, 1).map((c) => ({ ...c, tone: 'var(--m-green)', Icon: CheckCircle2 })),
+  ];
+  return (
+    <Card title="Tu coach" icon={<Brain />} actions={<button className="btn sm" onClick={() => navigate('ia')}>{pending ? `Revisar ajustes (${pending})` : 'Más'}</button>}>
+      <div className="col" style={{ gap: 10 }} data-testid="dash-coach">
+        {items.length === 0 && <p className="small muted">Registra unos días para recibir recomendaciones.</p>}
+        {items.map((c, i) => (
+          <div key={i} className="row nowrap small" style={{ gap: 10, alignItems: 'flex-start' }}>
+            <c.Icon size={16} color={c.tone} style={{ flex: 'none', marginTop: 2 }} />
+            <span>{c.text}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
