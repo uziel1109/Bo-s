@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Brain, Check, KeyRound, MessageSquare, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Empty, Field, fmt, Stat, Tabs } from '../components/ui';
+import { Alert, Card, Claims, DetailsHint, Empty, Field, fmt, Stat, Tabs } from '../components/ui';
 import { answer, aiContextSummary, matchQuestion, QUESTIONS } from '@shared/assistant/assistant';
 import { analyzeAdaptation } from '@shared/analytics/adaptation';
 import { buildWeeklyReport } from '@shared/analytics/weeklyReport';
@@ -20,7 +20,7 @@ export function AI() {
   const [tab, setTab] = useState<Tab>(pending ? 'ajustes' : 'asistente');
   return (
     <div className="page">
-      <Hero module="ia" title="Inteligencia artificial" sub="Análisis de tus datos reales. Cada afirmación indica si es un dato, una estimación, una hipótesis o una recomendación." />
+      <Hero module="ia" title="Inteligencia artificial" sub="Pregúntale a tus datos y revisa cómo te fue en la semana." />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -136,7 +136,7 @@ function Weekly() {
           </button>
         </div>
         <button
-          className="btn"
+          className="btn sm ghost"
           onClick={async () => {
             await api.upsert('weekly_reports', { id: `wr_${r.weekStart}`, week_start: r.weekStart, created_at: new Date().toISOString(), data: r });
             await reload();
@@ -146,45 +146,60 @@ function Weekly() {
           Guardar informe
         </button>
       </div>
-      <div className="grid g4">
-        <Card tight>
-          <Stat label="1. Peso promedio" value={fmt(r.avgWeight, 2)} unit="kg" foot={`${r.weighIns} pesajes`} />
-        </Card>
-        <Card tight>
-          <Stat label="2. vs semana anterior" value={sign(r.weightDiff, 2)} unit="kg" foot={r.prevAvgWeight ? `Anterior: ${fmt(r.prevAvgWeight, 2)} kg` : 'Sin datos previos'} />
-        </Card>
-        <Card tight>
-          <Stat label="3. Cintura" value={sign(r.waistDiff)} unit="cm" foot={r.waistAvg ? `Promedio ${fmt(r.waistAvg, 1)} cm` : 'Sin medición'} />
-        </Card>
-        <Card tight>
-          <Stat label="4. Cumplimiento calórico" value={`${r.calories.daysWithin10pct}/${r.calories.loggedDays}`} unit="días ±10 %" foot={`Promedio ${fmt(r.calories.avg)} / ${fmt(r.calories.target)} kcal`} />
-        </Card>
-        <Card tight>
-          <Stat label="5. Proteína" value={`${r.macros.proteinDaysOk}/${r.calories.loggedDays}`} unit="días en meta" foot={`Promedio ${fmt(r.macros.proteinAvg)} / ${r.macros.proteinTarget} g · C ${fmt(r.macros.carbsAvg)} · G ${fmt(r.macros.fatAvg)}`} />
-        </Card>
-        <Card tight>
-          <Stat label="6. Fuerza" value={`${r.strength.sessionsDone}/${r.strength.sessionsPlanned}`} unit="sesiones" foot={r.strength.prs.length ? `Récords: ${r.strength.prs.map((p) => p.name).join(', ')}` : 'Sin récords nuevos'} />
-        </Card>
-        <Card tight>
-          <Stat label="7. Actividad" value={fmt(r.activity.stepsAvg)} unit="pasos/día" foot={`Cardio: ${r.activity.cardioMin} min en ${r.activity.cardioSessions} sesiones`} />
-        </Card>
-        <Card tight>
-          <Stat label="8. Hidratación" value={fmt(r.hydration.avgMl)} unit="ml/día" foot={`${r.hydration.daysOk} días ≥80 % de ${fmt(r.hydration.target)} ml`} />
-        </Card>
-      </div>
-      <div className="grid g2">
-        <Card title="9. Recuperación">
-          <p className="mb8">
-            <b>{r.recovery.label}</b>
-          </p>
-          <p className="small muted">
-            Sueño {fmt(r.recovery.sleepAvg, 1)} h · calidad {fmt(r.recovery.sleepQuality, 1)}/5 · energía {fmt(r.recovery.energy, 1)}/5 · dolor muscular {fmt(r.recovery.soreness, 1)}/5
-          </p>
-        </Card>
-        <Card title="10. Recomendaciones para la siguiente semana">
-          <Claims items={[...r.claims, ...r.proposals.map((p) => ({ kind: 'recomendacion' as const, text: `${p.title} (requiere tu confirmación en Ajustes propuestos)` }))]} />
-        </Card>
-      </div>
+      {(() => {
+        const logged = r.calories.loggedDays;
+        const ratio = (a: number, b: number) => (b > 0 ? a / b : null);
+        const tone = (x: number | null, good = 0.8, ok = 0.5) => (x == null ? 'none' : x >= good ? 'good' : x >= ok ? 'ok' : 'bad');
+        const tiles: { label: string; value: string; foot: string; tone: string }[] = [
+          { label: 'Peso', value: r.weightDiff == null ? '—' : `${sign(r.weightDiff, 1)} kg`, foot: r.avgWeight ? `Promedio ${fmt(r.avgWeight, 1)} kg` : 'Sin pesajes', tone: r.weightDiff == null ? 'none' : r.weightDiff < 0 ? 'good' : r.weightDiff <= 0.2 ? 'ok' : 'bad' },
+          { label: 'Cintura', value: r.waistDiff == null ? '—' : `${sign(r.waistDiff)} cm`, foot: r.waistAvg ? `${fmt(r.waistAvg, 1)} cm` : 'Sin medición', tone: r.waistDiff == null ? 'none' : r.waistDiff <= 0 ? 'good' : 'bad' },
+          { label: 'Calorías en objetivo', value: `${r.calories.daysWithin10pct} de 7`, foot: logged ? `${logged} días registrados` : 'Sin registros', tone: tone(ratio(r.calories.daysWithin10pct, 7), 0.7, 0.4) },
+          { label: 'Proteína cumplida', value: `${r.macros.proteinDaysOk} de 7`, foot: r.macros.proteinAvg != null ? `Promedio ${fmt(r.macros.proteinAvg)} g` : '—', tone: tone(ratio(r.macros.proteinDaysOk, 7), 0.7, 0.4) },
+          { label: 'Entrenamientos', value: `${r.strength.sessionsDone} de ${r.strength.sessionsPlanned}`, foot: r.strength.prs.length ? `${r.strength.prs.length} récord${r.strength.prs.length > 1 ? 's' : ''}` : 'Sin récords nuevos', tone: tone(ratio(r.strength.sessionsDone, r.strength.sessionsPlanned), 0.99, 0.6) },
+          { label: 'Pasos', value: fmt(r.activity.stepsAvg), foot: 'promedio por día', tone: r.activity.stepsAvg == null ? 'none' : r.activity.stepsAvg >= 8000 ? 'good' : r.activity.stepsAvg >= 6000 ? 'ok' : 'bad' },
+        ];
+        const recs = [...r.proposals.map((p) => `${p.title} (confírmalo en Ajustes propuestos)`), ...r.claims.filter((c) => c.kind === 'recomendacion').map((c) => c.text)];
+        const good = tiles.filter((t) => t.tone === 'good').length;
+        const headline = r.weightDiff == null ? 'Registra tu peso para ver cómo vas.' : `${r.weightDiff < 0 ? `Bajaste ${fmt(Math.abs(r.weightDiff), 1)} kg` : r.weightDiff > 0 ? `Subiste ${fmt(r.weightDiff, 1)} kg` : 'Peso estable'} y ${good} de ${tiles.length} hábitos van bien.`;
+        return (
+          <>
+            <div className="week-verdict" data-testid="weekly-verdict">
+              <Sparkles size={18} /> {headline}
+            </div>
+            <div className="score-grid">
+              {tiles.map((t) => (
+                <div key={t.label} className={`score-tile ${t.tone}`}>
+                  <div className="tiny muted">{t.label}</div>
+                  <div className="score-value mono">{t.value}</div>
+                  <div className="tiny muted">{t.foot}</div>
+                </div>
+              ))}
+            </div>
+            <Card title="Para la próxima semana">
+              {recs.length === 0 ? (
+                <p className="small muted">Sigue igual: no hay cambios que recomendar.</p>
+              ) : (
+                <ol className="small rec-list">
+                  {recs.slice(0, 3).map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ol>
+              )}
+              <p className="small muted mt8">
+                Recuperación: <b>{r.recovery.label}</b>
+                {r.recovery.sleepAvg != null && <> · {fmt(r.recovery.sleepAvg, 1)} h de sueño</>}
+              </p>
+              <DetailsHint what="análisis completo, hidratación y recuperación" />
+            </Card>
+            <Card title="Análisis completo" className="tech">
+              <p className="small muted mb8">
+                Hidratación {fmt(r.hydration.avgMl)} ml/día ({r.hydration.daysOk} días ≥80 % de {fmt(r.hydration.target)} ml) · Cardio {r.activity.cardioMin} min en {r.activity.cardioSessions} sesiones · Calorías promedio {fmt(r.calories.avg)} / {fmt(r.calories.target)} kcal · C {fmt(r.macros.carbsAvg)} g · G {fmt(r.macros.fatAvg)} g · Sueño {fmt(r.recovery.sleepAvg, 1)} h, calidad {fmt(r.recovery.sleepQuality, 1)}/5, energía {fmt(r.recovery.energy, 1)}/5, dolor {fmt(r.recovery.soreness, 1)}/5
+              </p>
+              <Claims items={r.claims} />
+            </Card>
+          </>
+        );
+      })()}
     </div>
   );
 }

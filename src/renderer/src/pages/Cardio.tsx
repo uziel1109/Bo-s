@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, Field, fmt, NumInput, Stat, Bar } from '../components/ui';
+import { Alert, Card, Claims, DetailsHint, Field, fmt, NumInput, Stat, Bar } from '../components/ui';
 import { SimpleBars } from '../components/charts';
 import { StepsInput } from '../components/QuickLogs';
 import { cardioPlan, estimateCardioKcal, heartRateZones, MODALITY_LABEL, stepsTarget, weeklyCardioSummary } from '@shared/cardio/cardio';
@@ -32,84 +32,68 @@ export function Cardio() {
 
   return (
     <div className="page">
-      <Hero module="cardio" title="Cardio y actividad diaria" sub="El cardio complementa al entrenamiento de fuerza; la actividad diaria es la base del gasto." />
-      <div className="grid g4 mb16">
+      <Hero module="cardio" title="Cardio y actividad diaria" sub="Muévete todos los días; el cardio es un complemento." />
+      <div className="grid g2 mb16">
         <Card tight>
           <Stat label="Pasos hoy" value={fmt(stepsToday)} foot={`Meta: ${fmt(steps.target)}`} />
-          <div className="mt8">
+          <div className="mt8 mb12">
             <Bar value={stepsToday} max={steps.target} color="var(--s3)" />
           </div>
-        </Card>
-        <Card tight>
-          <Stat label="Cardio esta semana" value={week.minutes} unit="min" foot={`Plan: ~${plan.weeklyMinutesTarget} min · ${week.sessions} sesiones`} />
-        </Card>
-        <Card tight className="tech">
-          <Stat label="FC máxima estimada" value={zones.max} unit="lpm" foot="Tanaka: 208 − 0.7 × edad" />
-        </Card>
-        <Card tight>
-          <div className="field-label mb8">Registrar pasos de hoy</div>
           <StepsInput />
         </Card>
-      </div>
-      <div className="grid g2 mb16">
-        <Card title="Tu plan semanal recomendado">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Modalidad</th>
-                <th className="right">Duración</th>
-                <th className="right">Por semana</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plan.sessions.map((s) => (
-                <tr key={s.type}>
-                  <td>
-                    <b>{s.type}</b>
-                    <div className="tiny muted">{s.intensity}</div>
-                    <div className="tiny muted">{s.notes}</div>
-                  </td>
-                  <td className="small">{s.modality}</td>
-                  <td className="right">{s.minutes} min</td>
-                  <td className="right">{s.perWeek}×</td>
-                </tr>
-              ))}
-              <tr>
-                <td>
-                  <b>Pasos diarios</b>
-                  <div className="tiny muted">{steps.reason}</div>
-                </td>
-                <td className="small">Caminar durante el día</td>
-                <td className="right">{fmt(steps.target)}</td>
-                <td className="right">diario</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="mt16">
-            <Claims items={plan.notes.map((n) => ({ kind: 'recomendacion' as const, text: n }))} />
+        <Card tight>
+          <Stat label="Cardio esta semana" value={week.minutes} unit="min" foot={`Meta: ~${plan.weeklyMinutesTarget} min · ${week.sessions} sesiones`} />
+          <div className="mt8">
+            <Bar value={week.minutes} max={plan.weeklyMinutesTarget} color="var(--m-pink)" />
           </div>
         </Card>
-        <Card title="Zonas de frecuencia cardiaca" className="tech">
-          {betaBlocker && <Alert kind="warn">Tomas un betabloqueador: las zonas por frecuencia cardiaca no son válidas. Usa la escala de esfuerzo percibido (RPE).</Alert>}
-          <table className="table">
-            <tbody>
-              {zones.zones.map((z) => (
-                <tr key={z.key}>
-                  <td>
-                    <b>{z.label}</b>
-                    <div className="tiny muted">{z.desc}</div>
-                  </td>
-                  <td className="right mono">
-                    {z.range[0]}–{z.range[1]} lpm
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="tiny muted mt8">La FC máxima estimada tiene un error de ±10 lpm; ajusta según tu percepción de esfuerzo.</p>
-        </Card>
       </div>
+      <Card title="Tu plan semanal" className="mb16">
+        <div className="plan-tiles">
+          <div className="plan-tile" style={{ ['--pc' as string]: 'var(--m-lime)' }}>
+            <div className="plan-tile-title">Pasos diarios</div>
+            <div className="plan-tile-value mono">{fmt(steps.target)}</div>
+            <div className="tiny muted">todos los días</div>
+          </div>
+          {plan.sessions.map((s) => (
+            <div key={s.type} className="plan-tile" style={{ ['--pc' as string]: s.type.startsWith('Intervalos') ? 'var(--m-orange)' : 'var(--m-pink)' }}>
+              <div className="plan-tile-title">{s.type.startsWith('LISS') ? 'Cardio suave' : s.type}</div>
+              <div className="plan-tile-value mono">
+                {s.minutes} min <span className="muted" style={{ fontSize: 14 }}>× {s.perWeek}/sem</span>
+              </div>
+              <div className="tiny muted">{s.modality}</div>
+              <div className="tiny muted tech mt4">
+                {s.intensity}. {s.notes}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="small muted mt12">Cardio suave = puedes hablar en frases completas mientras lo haces.</p>
+        <div className="mt12 tech">
+          <p className="tiny muted mb8">{steps.reason}</p>
+          <Claims items={plan.notes.map((n) => ({ kind: 'recomendacion' as const, text: n }))} />
+        </div>
+        <DetailsHint what="intensidad, zonas cardiacas y notas" />
+      </Card>
+      <Card title="Zonas de frecuencia cardiaca" className="tech mb16">
+        <p className="small muted mb8">FC máxima estimada: {zones.max} lpm (Tanaka: 208 − 0.7 × edad; error ±10 lpm).</p>
+        {betaBlocker && <Alert kind="warn">Tomas un betabloqueador: las zonas por frecuencia cardiaca no son válidas. Usa la escala de esfuerzo percibido (RPE).</Alert>}
+        <table className="table">
+          <tbody>
+            {zones.zones.map((z) => (
+              <tr key={z.key}>
+                <td>
+                  <b>{z.label}</b>
+                  <div className="tiny muted">{z.desc}</div>
+                </td>
+                <td className="right mono">
+                  {z.range[0]}–{z.range[1]} lpm
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
       <div className="grid g2">
         <Card title="Registrar sesión de cardio">
           <div className="grid g2">
@@ -138,6 +122,10 @@ export function Cardio() {
                 </option>
               </select>
             </Field>
+          </div>
+          <details className="mt12">
+            <summary className="small muted" style={{ cursor: 'pointer' }}>Más datos (opcional)</summary>
+            <div className="grid g2 mt8">
             <Field label="FC promedio (opcional)">
               <NumInput value={f.avg_hr} onChange={(v) => setF({ ...f, avg_hr: v })} suffix="lpm" />
             </Field>
@@ -150,8 +138,9 @@ export function Cardio() {
             <Field label="kcal del reloj/máquina (opcional)" help="Solo como referencia; no se suma a tus calorías.">
               <NumInput value={f.device_kcal} onChange={(v) => setF({ ...f, device_kcal: v })} />
             </Field>
-          </div>
-          {est != null && <p className="small muted mt8">Gasto estimado por MET: ≈ {est} kcal (orientativo, error amplio; no modifica tu objetivo de comida).</p>}
+            </div>
+          </details>
+          {est != null && <p className="small muted mt8 tech">Gasto estimado por MET: ≈ {est} kcal (orientativo, error amplio; no modifica tu objetivo de comida).</p>}
           <button className="btn primary mt16" onClick={save} data-testid="cardio-save">
             <Plus /> Registrar
           </button>
@@ -160,7 +149,7 @@ export function Cardio() {
           <SimpleBars data={last14} x="date" y="steps" name="Pasos" xFmt={(d) => formatDateShort(String(d))} height={220} color="var(--s3)" />
         </Card>
       </div>
-      <Card title="Historial de cardio" className="mt16">
+      {data.cardioLogs.length > 0 && <Card title="Historial de cardio" className="mt16">
         <table className="table">
           <thead>
             <tr>
@@ -168,8 +157,8 @@ export function Cardio() {
               <th>Modalidad</th>
               <th className="right">Min</th>
               <th>Intensidad</th>
-              <th className="right">FC</th>
-              <th className="right">RPE</th>
+              <th className="right tech">FC</th>
+              <th className="right tech">RPE</th>
               <th />
             </tr>
           </thead>
@@ -183,8 +172,8 @@ export function Cardio() {
                   <td>{MODALITY_LABEL[c.modality]}</td>
                   <td className="right">{c.minutes}</td>
                   <td>{c.intensity}</td>
-                  <td className="right">{c.avg_hr ?? '—'}</td>
-                  <td className="right">{c.rpe ?? '—'}</td>
+                  <td className="right tech">{c.avg_hr ?? '—'}</td>
+                  <td className="right tech">{c.rpe ?? '—'}</td>
                   <td className="right">
                     <button
                       className="btn ghost icon sm"
@@ -200,8 +189,7 @@ export function Cardio() {
               ))}
           </tbody>
         </table>
-        {!data.cardioLogs.length && <p className="muted small">Sin sesiones registradas.</p>}
-      </Card>
+      </Card>}
     </div>
   );
 }

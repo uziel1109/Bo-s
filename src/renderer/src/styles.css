@@ -2381,3 +2381,74 @@ details.supp-group[open] > summary::after {
   overflow: hidden;
   margin-top: 2px;
 }
+.plan-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.plan-tile {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--pc);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--pc) 10%, var(--surface)) 0%, var(--surface) 70%);
+}
+.plan-tile-title {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-2);
+}
+.plan-tile-value {
+  font-size: 22px;
+  font-weight: 760;
+  margin: 2px 0;
+}
+.week-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 650;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--m-lime) 16%, var(--surface)), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--m-lime) 30%, var(--border));
+}
+.week-verdict svg {
+  color: var(--m-lime);
+  flex: none;
+}
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.score-tile {
+  --tc: var(--m-slate);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-top: 3px solid var(--tc);
+}
+.score-tile.good { --tc: var(--m-green); }
+.score-tile.ok { --tc: var(--m-amber); }
+.score-tile.bad { --tc: var(--m-red); }
+.score-value {
+  font-size: 22px;
+  font-weight: 760;
+  margin: 2px 0;
+  color: var(--text);
+}
+.rec-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
