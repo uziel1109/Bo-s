@@ -9,6 +9,7 @@ import { AIService } from './ai';
 import { decryptBytes, encryptBytes, loadOrCreatePhotoKey, packBackup, unpackBackup, type KeyStore } from './secure';
 import { SCHEMA, type ListQuery, type TableName } from '../shared/schema';
 import { seedFoods } from '../shared/nutrition/foodsSeed';
+import { syncSeedFoods } from '../shared/nutrition/seedSync';
 import { importJsonTables, importRows, parseCsv, toCsv } from '../shared/dataIO';
 
 // Permite aislar los datos en pruebas automatizadas.
@@ -46,7 +47,7 @@ async function initData() {
   photoKey = loadOrCreatePhotoKey(dataDir(), keyStore);
   ai = new AIService(dataDir(), keyStore);
   // Base de datos inicial de alimentos (solo la primera vez; no sobrescribe ediciones del usuario).
-  if (db.count('foods') === 0) db.bulkUpsert('foods', seedFoods() as unknown as Record<string, unknown>[]);
+  syncSeedFoods(db);
   db.flush();
 }
 

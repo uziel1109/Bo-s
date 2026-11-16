@@ -1656,3 +1656,56 @@ body {
 .chip-stat b {
   color: var(--text);
 }
+
+/* Lista del súper */
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.shop-item:hover {
+  background: var(--surface-2);
+}
+.shop-box {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 2px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  flex: none;
+  transition: all 0.15s;
+}
+.shop-item.done .shop-box {
+  background: var(--sc);
+  border-color: var(--sc);
+  color: #0b0e12;
+}
+.shop-name {
+  font-weight: 560;
+}
+.shop-item.done .shop-name {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.shop-qty {
+  font-weight: 650;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 13px;
+}
+.shop-item.done .shop-qty {
+  opacity: 0.5;
+}

@@ -6,6 +6,7 @@ import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { LocalDB } from '@shared/db/localdb';
 import { SCHEMA, type ListQuery, type TableName } from '@shared/schema';
 import { seedFoods } from '@shared/nutrition/foodsSeed';
+import { syncSeedFoods } from '@shared/nutrition/seedSync';
 import { importJsonTables, importRows, parseCsv, toCsv, type ImportKind } from '@shared/dataIO';
 import { packBackup, unpackBackup, toBase64, fromBase64 } from '@shared/backupCodec';
 import { DEFAULT_MODEL } from '@shared/ai/claude';
@@ -22,7 +23,7 @@ export async function createWebBridge() {
   const db = new LocalDB(SQL, initial, (bytes) => {
     idbPut('kv', 'db', bytes).catch((e) => console.error('No se pudo guardar la base de datos', e));
   });
-  if (db.count('foods') === 0) db.bulkUpsert('foods', seedFoods() as unknown as Record<string, unknown>[]);
+  syncSeedFoods(db);
   db.flush();
   // Guardar de inmediato al salir o pasar a segundo plano.
   const flush = () => db.flush();

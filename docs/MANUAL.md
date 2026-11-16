@@ -48,7 +48,8 @@ Cada afirmación lleva una etiqueta:
 
 - **Objetivos:** explica de dónde sale cada número y la distribución por comida.
 - **Plan de comidas:** genera 1 o 7 días con alimentos accesibles en México. Pulsa ↻ junto a un alimento para ver **sustitutos equivalentes**, o *Registrar hoy* para pasar una comida del plan a tu registro.
-- **Alimentos:** los valores iniciales son de referencia (USDA FoodData Central) y aparecen como *por verificar*. Edítalos con la etiqueta de tus productos y márcalos como verificados. Puedes crear alimentos propios (se validan: kcal coherentes con 4/4/9, macros ≤ 100 g).
+- **Lista del súper:** desde el plan de comidas toca *Lista del súper*, elige los días (y ×2 o ×4 si compras para más tiempo o personas) y crea la lista. Lo que comes cocido (pollo, arroz, frijol, pasta…) aparece en peso crudo o seco, que es como se compra. Toca cada artículo para marcarlo al echarlo al carrito; la lista se guarda y puedes compartirla por WhatsApp o Notas.
+- **Alimentos:** los alimentos base están verificados contra USDA FoodData Central (SR Legacy); cada uno muestra su número FDC. Si compras un producto de marca, edita sus valores con la etiqueta. Puedes crear alimentos propios (se validan: kcal coherentes con 4/4/9, macros ≤ 100 g).
 - **Código de barras:** escribe el número o usa un lector USB. Se busca primero en tu base; si no existe y hay internet, en Open Food Facts (revisa los valores antes de guardar).
 - **Foto (IA):** solo si activaste la IA externa; los gramos estimados deben revisarse.
 

@@ -66,6 +66,28 @@ try {
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(shots, `web-ipad-dashboard-${browserName}.png`) });
 
+  console.log('▶ Lista del súper');
+  await page.click('[data-testid=nav-nutricion]');
+  await page.click('.tabs button:has-text("Plan de comidas")');
+  await page.click('[data-testid=gen-mealplan]');
+  await page.click('[data-testid=go-shopping]');
+  await page.click('[data-testid=shopping-create]');
+  await page.waitForSelector('.shop-item');
+  const nItems = await page.locator('.shop-item').count();
+  check(nItems > 8, `Lista creada con ${nItems} artículos`);
+  check(!(await page.locator('.shop-name', { hasText: /cocid/i }).count()), 'Los artículos aparecen en crudo/seco (sin "cocido")');
+  await page.locator('.shop-item').first().click();
+  await page.waitForTimeout(400);
+  check((await page.textContent('[data-testid=shopping-progress]')).trim().startsWith('1'), 'Marcar un artículo actualiza el progreso');
+  await page.screenshot({ path: path.join(shots, `web-ipad-super-${browserName}.png`) });
+  await page.reload();
+  await page.waitForSelector('[data-testid=dash-weight]', { timeout: 20000 });
+  await page.click('[data-testid=nav-nutricion]');
+  await page.click('.tabs button:has-text("Lista del súper")');
+  await page.waitForSelector('.shop-item');
+  check((await page.locator('.shop-item.done').count()) === 1, 'La lista y lo marcado persisten tras recargar');
+  await page.click('[data-testid=nav-dashboard]');
+
   console.log('▶ Persistencia al recargar');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });

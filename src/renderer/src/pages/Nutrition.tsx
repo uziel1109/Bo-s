@@ -11,7 +11,8 @@ import { generateMealPlan, type MealPlan, type PlanItem } from '@shared/nutritio
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
 import { IconTile } from '../components/visual';
-import { Apple, Coffee, Cookie, Moon, Soup } from 'lucide-react';
+import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
+import { buildShoppingList, SECTION_ORDER, shoppingListText, type Section, type ShoppingList } from '@shared/nutrition/shopping';
 
 const MEAL_ICON: Record<MealSlot, { icon: typeof Coffee; color: string }> = {
   desayuno: { icon: Coffee, color: 'var(--m-amber)' },
@@ -46,7 +47,7 @@ function MacroRing({ label, value, target, unit, color, big }: { label: string; 
   );
 }
 
-type Tab = 'hoy' | 'plan' | 'alimentos' | 'recetas' | 'objetivos';
+type Tab = 'hoy' | 'plan' | 'super' | 'alimentos' | 'recetas' | 'objetivos';
 
 export function Nutrition() {
   const [tab, setTab] = useState<Tab>('hoy');
@@ -59,13 +60,15 @@ export function Nutrition() {
         tabs={[
           { value: 'hoy', label: 'Registro diario' },
           { value: 'plan', label: 'Plan de comidas' },
+          { value: 'super', label: 'Lista del súper' },
           { value: 'alimentos', label: 'Alimentos' },
           { value: 'recetas', label: 'Recetas y frecuentes' },
           { value: 'objetivos', label: 'Objetivos' },
         ]}
       />
       {tab === 'hoy' && <DailyLog />}
-      {tab === 'plan' && <MealPlanView />}
+      {tab === 'plan' && <MealPlanView onShopping={() => setTab('super')} />}
+      {tab === 'super' && <ShoppingView onPlan={() => setTab('plan')} />}
       {tab === 'alimentos' && <FoodDB />}
       {tab === 'recetas' && <Recipes />}
       {tab === 'objetivos' && <Targets />}
@@ -568,7 +571,7 @@ function PhotoLog({ onAdd }: { onAdd: (rows: Omit<FoodLog, 'id' | 'date' | 'meal
 
 // ───────────────────────── Plan de comidas
 
-function MealPlanView() {
+function MealPlanView({ onShopping }: { onShopping: () => void }) {
   const { foods, profile, state: st, mealPlan, reload, toast, today } = useApp();
   const [day, setDay] = useState(0);
   const [subFor, setSubFor] = useState<{ d: number; m: number; i: number; item: PlanItem } | null>(null);
@@ -624,6 +627,9 @@ function MealPlanView() {
         <div className="row">
           <button className="btn" onClick={() => generate(mealPlan.days.length)}>
             <RefreshCw /> Regenerar
+          </button>
+          <button className="btn primary" onClick={onShopping} data-testid="go-shopping">
+            <ShoppingCart /> Lista del súper
           </button>
         </div>
       </div>
@@ -859,7 +865,7 @@ function FoodDB() {
   return (
     <div className="col" style={{ gap: 16 }}>
       <Alert kind="info">
-        La base inicial usa valores de referencia de <b>USDA FoodData Central</b> por 100 g. Los productos de marca pueden variar: edita cualquier alimento o crea los tuyos a partir de la etiqueta. Los alimentos marcados “por verificar” no se han confirmado con la etiqueta.
+        Los alimentos base están verificados contra la base oficial <b>USDA FoodData Central (SR Legacy)</b>: cada uno indica su número FDC, que puedes consultar en fdc.nal.usda.gov. Son valores por 100 g de alimentos genéricos; los productos de marca pueden variar, así que puedes editar cualquiera o crear los tuyos a partir de la etiqueta.
       </Alert>
       <div className="row between">
         <div className="row">
@@ -1165,6 +1171,175 @@ function Targets() {
             Aplicar recálculo
           </button>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────── Lista del súper
+
+const SECTION_STYLE: Record<Section, { icon: typeof Apple; color: string }> = {
+  'Frutas y verduras': { icon: Apple, color: 'var(--m-green)' },
+  'Carnes, pescados y mariscos': { icon: Beef, color: 'var(--m-red)' },
+  'Huevo y lácteos': { icon: Egg, color: 'var(--m-amber)' },
+  'Tortillería y panadería': { icon: Croissant, color: 'var(--m-orange)' },
+  'Abarrotes y granos': { icon: Wheat, color: 'var(--m-violet)' },
+  Suplementos: { icon: Pill, color: 'var(--m-pink)' },
+  Otros: { icon: Package, color: 'var(--m-slate)' },
+};
+
+function ShoppingView({ onPlan }: { onPlan: () => void }) {
+  const { mealPlan, foods, settings, setSetting, toast } = useApp();
+  const saved = (settings.shopping_list as ShoppingList | undefined) ?? null;
+  const [list, setList] = useState<ShoppingList | null>(saved);
+  const [days, setDays] = useState<number[]>(() => mealPlan?.days.map((d) => d.index) ?? []);
+  const [repeat, setRepeat] = useState<'1' | '2' | '4'>('1');
+  const [extra, setExtra] = useState({ name: '', qty: '' });
+  useEffect(() => setList(saved), [saved]);
+
+  const persist = (l: ShoppingList | null) => {
+    setList(l);
+    setSetting('shopping_list', l);
+  };
+  const create = () => {
+    if (!mealPlan) return;
+    if (!days.length) return toast('Elige al menos un día del plan.', 'error');
+    if (list?.items.some((i) => i.checked) && !confirm('Ya tienes una lista con artículos marcados. ¿Reemplazarla?')) return;
+    persist(buildShoppingList(mealPlan, foods, days, Number(repeat)));
+    toast('Lista del súper creada.');
+  };
+  const toggle = (key: string) => list && persist({ ...list, items: list.items.map((i) => (i.key === key ? { ...i, checked: !i.checked } : i)) });
+  const share = async () => {
+    if (!list) return;
+    const text = shoppingListText(list);
+    try {
+      if (navigator.share) await navigator.share({ title: 'Lista del súper', text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast('Lista copiada: pégala en Notas o WhatsApp.');
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        await navigator.clipboard?.writeText(text).catch(() => {});
+        toast('Lista copiada al portapapeles.');
+      }
+    }
+  };
+
+  if (!mealPlan && !list)
+    return (
+      <Card>
+        <Empty>
+          <p className="mb16">La lista se arma a partir de tu plan de comidas. Primero genera un plan.</p>
+          <button className="btn primary" onClick={onPlan}>
+            <Utensils /> Ir al plan de comidas
+          </button>
+        </Empty>
+      </Card>
+    );
+
+  const done = list?.items.filter((i) => i.checked).length ?? 0;
+  const total = list?.items.length ?? 0;
+  const outdated = list && mealPlan && list.planCreatedAt && list.planCreatedAt !== mealPlan.createdAt;
+  return (
+    <div className="col" style={{ gap: 16 }}>
+      {mealPlan && (
+        <Card title="Armar la lista" icon={<ShoppingCart />} hint="Cantidades para comprar: lo que se come cocido aparece en crudo o seco">
+          <div className="col" style={{ gap: 12 }}>
+            <div>
+              <div className="field-label mb8">Días del plan a comprar</div>
+              <div className="chips">
+                {mealPlan.days.map((d) => (
+                  <button key={d.index} className={`chip ${days.includes(d.index) ? 'on' : ''}`} onClick={() => setDays(days.includes(d.index) ? days.filter((x) => x !== d.index) : [...days, d.index].sort())}>
+                    Día {d.index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="row between">
+              <div className="row">
+                <span className="field-label">Repetir</span>
+                <Seg value={repeat} onChange={setRepeat} options={[{ value: '1', label: '×1' }, { value: '2', label: '×2' }, { value: '4', label: '×4' }]} />
+                <span className="tiny muted">{mealPlan.days.length === 1 ? 'Tu plan es de 1 día: usa ×… para varios días.' : 'Útil para comprar para 2 semanas o para más personas.'}</span>
+              </div>
+              <button className="btn primary" onClick={create} data-testid="shopping-create">
+                <ShoppingCart /> {list ? 'Actualizar lista' : 'Crear lista'}
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+      {outdated && <Alert kind="warn">Tu plan de comidas cambió desde que creaste esta lista. Actualízala para que coincida.</Alert>}
+      {list && (
+        <>
+          <div className="card shopping-progress">
+            <div className="row between">
+              <div>
+                <div className="tiny muted">En el carrito</div>
+                <div className="big-number mono" style={{ fontSize: 40 }} data-testid="shopping-progress">
+                  {done}
+                  <span className="unit">/ {total}</span>
+                </div>
+              </div>
+              <div className="row">
+                <button className="btn" onClick={share}>
+                  <Share2 /> Compartir
+                </button>
+                <button className="btn" disabled={!done} onClick={() => persist({ ...list, items: list.items.map((i) => ({ ...i, checked: false })) })}>
+                  Desmarcar todo
+                </button>
+                <button className="btn" disabled={!done} onClick={() => confirm('¿Quitar de la lista los artículos marcados?') && persist({ ...list, items: list.items.filter((i) => !i.checked) })}>
+                  <Trash2 /> Quitar marcados
+                </button>
+              </div>
+            </div>
+            <div className="journey-track" style={{ marginTop: 14 }}>
+              <div className="journey-fill" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+            </div>
+          </div>
+          <div className="grid g2">
+            {SECTION_ORDER.map((sec) => {
+              const its = list.items.filter((i) => i.section === sec);
+              if (!its.length) return null;
+              const st = SECTION_STYLE[sec];
+              return (
+                <Card key={sec} title={sec} icon={<IconTile icon={st.icon} color={st.color} size={30} />} hint={`${its.filter((i) => i.checked).length}/${its.length}`}>
+                  <div className="col" style={{ gap: 4 }}>
+                    {its.map((i) => (
+                      <button key={i.key} className={`shop-item ${i.checked ? 'done' : ''}`} onClick={() => toggle(i.key)} data-testid={`shop-${i.key}`} style={{ ['--sc' as string]: st.color }}>
+                        <span className="shop-box">{i.checked && <Check size={16} />}</span>
+                        <span className="grow">
+                          <span className="shop-name">{i.name}</span>
+                          {i.detail && <span className="tiny muted" style={{ display: 'block' }}>{i.detail}</span>}
+                        </span>
+                        <span className="shop-qty mono">{i.qty}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+          <Card title="Agregar algo más">
+            <div className="row nowrap">
+              <input className="input" placeholder="Artículo (p. ej., limones, papel de cocina)" value={extra.name} onChange={(e) => setExtra({ ...extra, name: e.target.value })} />
+              <input className="input" style={{ maxWidth: 160 }} placeholder="Cantidad" value={extra.qty} onChange={(e) => setExtra({ ...extra, qty: e.target.value })} />
+              <button
+                className="btn primary"
+                disabled={!extra.name.trim()}
+                onClick={() => {
+                  persist({ ...list, items: [...list.items, { key: `extra_${uid()}`, name: extra.name.trim(), qty: extra.qty.trim() || '—', grams: 0, section: 'Otros', checked: false, custom: true }] });
+                  setExtra({ name: '', qty: '' });
+                }}
+              >
+                <Plus />
+              </button>
+            </div>
+            <p className="tiny muted mt8">
+              Las cantidades de carne, granos y leguminosas se convirtieron a peso crudo o seco con factores calculados a partir de USDA FoodData Central. Son aproximadas: redondea según los empaques de tu tienda.
+            </p>
+          </Card>
+        </>
       )}
     </div>
   );
