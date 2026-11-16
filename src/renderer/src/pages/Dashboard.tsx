@@ -15,6 +15,7 @@ import { getExercise } from '@shared/training/exercises';
 import { realPace } from '@shared/body/realPace';
 import { etaWithBreaks, nearGoal } from '@shared/nutrition/phases';
 import { DayKindBadge } from '../components/PhasesPanel';
+import { ChallengesCard } from '../components/Challenges';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
@@ -284,6 +285,10 @@ export function Dashboard() {
         <Card title="Qué hacer hoy" icon={<Brain />} actions={<button className="btn sm" onClick={() => navigate('ia')}>Asistente</button>}>
           <Claims items={coach.today} />
         </Card>
+      </div>
+
+      <div className="mb16">
+        <ChallengesCard />
       </div>
 
       <div className="grid g2 mb16">

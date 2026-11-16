@@ -99,6 +99,20 @@ Tablas: `settings`, `profile`, `body_logs`, `foods`, `recipes`, `favorites`, `fo
 
 `src/renderer/src/components/ExerciseAnimation.tsx` dibuja figuras originales en SVG con cinemática directa: cada patrón de movimiento (sentadilla, bisagra, press, remo, jalón, curl…) define dos posturas por ángulos articulares y un punto de anclaje (pies, cadera, hombros o manos), y la animación interpola entre ellas. No se usan imágenes de terceros: las bases de imágenes "libres" disponibles no documentan el origen de sus fotografías, así que se descartaron para no arriesgar derechos de autor. Respeta la preferencia del sistema de reducir movimiento. `#anim-debug` muestra todas las posturas para revisión.
 
+## Funciones añadidas en la versión 1.1
+
+| Módulo | Archivo | Qué hace |
+| --- | --- | --- |
+| Fases de dieta | `shared/nutrition/phases.ts` | `dayPlanFor()` calcula el objetivo de cada día: fase de mantenimiento > descanso de dieta > recarga/compensación > evento/ahorro, nunca por debajo del mínimo seguro (salvo el día del evento). El motor expone `todayTargets` y `dayPlan`; `targets` sigue siendo el plan base (adaptación, informe semanal). La configuración vive en `settings.phases`. |
+| Recetas | `shared/nutrition/recipesSeed.ts`, `recipeUse.ts` | 24 recetas con alimentos verificados; se insertan una vez por versión (`settings.seed_recipes_version`). `recipeFit()` ajusta porciones a la comida del plan. |
+| Preparación | `shared/nutrition/mealPrep.ts` | Agrupa los cocidos del plan, convierte a crudo con `COOKED_TO_RAW`, ordena por tiempo y reparte en recipientes (USDA FSIS: 3–4 días refrigerado). |
+| Saciedad | `shared/analytics/satiety.ts`, tabla `meal_ratings` | Promedio de saciedad por alimento (≥ 3 comidas), por comida del día y por proteína/fibra. |
+| Entreno adaptado | `shared/training/travel.ts` | Sustituto por puntuación: mismo músculo principal, mismo patrón, alternativa listada; sin repetir ejercicios. |
+| Movilidad | `shared/training/mobility.ts` | 10 ejercicios dinámicos elegidos por patrón del día y lesiones; nuevas animaciones `mob_*` en `lib/exerciseRig.ts`. |
+| Modo gimnasio | `components/GymMode.tsx`, `lib/gym.ts` | Screen Wake Lock API (se vuelve a pedir al regresar a la app), Web Audio para el aviso (se desbloquea con el toque del usuario), Fullscreen API. |
+| Resumen mensual | `shared/analytics/monthly.ts`, `components/Monthly.tsx` | Cambios con la tendencia de peso, marcas por 1RM estimado; la imagen se dibuja en `<canvas>` 1080 × 1350 y se guarda con `file:save` (acepta binario). |
+| Retos semanales | `shared/analytics/challenges.ts` | Elige las 3 métricas con menor cumplimiento la semana anterior (sin proponer las que nunca registras) y las guarda en `settings.weekly_challenges` para que no cambien en la semana. |
+
 ## Ampliaciones previstas
 
 - Escaneo de código de barras con cámara (requiere una librería de decodificación; hoy se admite teclado y lectores USB).

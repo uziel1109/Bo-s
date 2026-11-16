@@ -142,7 +142,80 @@ try {
   check(await page.locator('.warmup').first().isVisible(), 'Series de calentamiento sugeridas');
   await page.screenshot({ path: path.join(shots, `web-ipad-calentamiento-${browserName}.png`) });
   await page.click('button:has-text("Descartar")');
+
+  console.log('▶ Entreno en otro lado, movilidad y modo gimnasio');
+  await page.click('.seg button:has-text("Casa con mancuernas")');
+  await page.waitForSelector('[data-testid=travel-changes]');
+  check((await page.locator('[data-testid=travel-changes] > div').count()) > 0, `Sesión adaptada al equipo de casa (${await page.locator('[data-testid=travel-changes] > div').count()} cambios)`);
+  const drills = await page.locator('[data-testid=mobility-list] > div').count();
+  check(drills >= 3, `Movilidad del día con ${drills} ejercicios animados`);
+  await page.click('[data-testid=mobility-start]');
+  await page.waitForSelector('[data-testid=mobility-guide] .ex-anim');
+  await page.click('[data-testid=mobility-next]');
+  check((await page.textContent('.modal')).includes('2 de'), 'Movilidad guiada avanza al siguiente ejercicio');
+  await page.click('.modal button:has-text("Cerrar")');
+  await page.click('[data-testid=session-start]');
+  await page.click('[data-testid=gym-open]');
+  await page.waitForSelector('[data-testid=gym-mode]');
+  await page.fill('[data-testid=gym-weight]', '12');
+  await page.click('[data-testid=gym-done]');
+  await page.waitForSelector('[data-testid=gym-rest]');
+  check(true, 'Modo gimnasio: serie registrada y descanso en pantalla completa');
+  await page.screenshot({ path: path.join(shots, `web-ipad-gimnasio-${browserName}.png`) });
+  await page.click('[data-testid=gym-skip]');
+  await page.waitForSelector('[data-testid=gym-done]');
+  await page.click('[data-testid=gym-exit]');
+  check((await page.inputValue('[data-testid=w-0-0]')) === '12', 'Lo registrado en modo gimnasio aparece en la sesión');
+  await page.click('button:has-text("Descartar")');
+
+  console.log('▶ Fases, recetas, preparación y saciedad');
+  await page.click('[data-testid=nav-nutricion]');
+  await page.click('.tabs button:has-text("Fases y eventos")');
+  await page.fill('[data-testid=event-name]', 'Boda');
+  await page.click('[data-testid=event-add]');
+  await page.waitForSelector('[data-testid=event-row]');
+  check((await page.textContent('[data-testid=event-row]')).includes('Boda'), 'Evento agregado con su objetivo de calorías');
+  await page.screenshot({ path: path.join(shots, `web-ipad-fases-${browserName}.png`) });
+  await page.click('.tabs button:has-text("Plan de comidas")');
+  await page.locator('[data-testid=meal-recipe]').first().click();
+  await page.waitForSelector('[data-testid=recipe-option]');
+  const nRecipes = await page.locator('[data-testid=recipe-option]').count();
+  check(nRecipes >= 20, `Recetas mexicanas disponibles para el plan (${nRecipes})`);
+  await page.locator('[data-testid=recipe-option] button').first().click();
+  await page.waitForTimeout(300);
+  check((await page.locator('.card-head', { hasText: /porci/ }).count()) > 0, 'La comida del plan se cambió por una receta con porciones ajustadas');
+  await page.click('.tabs button:has-text("Preparación")');
+  await page.waitForSelector('[data-testid=prep-batches]');
+  check((await page.locator('[data-testid=prep-container]').count()) > 0, `Preparación en lote: ${await page.locator('[data-testid=prep-container]').count()} recipientes`);
+  await page.screenshot({ path: path.join(shots, `web-ipad-preparacion-${browserName}.png`) });
+  await page.click('.tabs button:has-text("Registro diario")');
+  await page.click('[data-testid=sat-desayuno-4]');
+  await page.waitForSelector('text=comidas calificadas');
+  check(true, 'Saciedad calificada y análisis visible');
+
+  console.log('▶ Resumen mensual y retos');
+  await page.evaluate(() => {
+    const orig = window.bodyos.invoke;
+    window.__saved = null;
+    window.bodyos.invoke = (ch, ...a) => {
+      if (ch === 'file:save') {
+        window.__saved = { name: a[0], size: a[1].length, png: a[1][0] === 0x89 && a[1][1] === 0x50 };
+        return Promise.resolve(a[0]);
+      }
+      return orig(ch, ...a);
+    };
+  });
+  await page.click('[data-testid=nav-progreso]');
+  await page.click('.tabs button:has-text("Resumen mensual")');
+  await page.waitForSelector('[data-testid=monthly-card]');
+  await page.click('[data-testid=monthly-save]');
+  await page.waitForFunction(() => window.__saved, null, { timeout: 10000 });
+  const saved = await page.evaluate(() => window.__saved);
+  check(saved.png && saved.size > 20000 && /bodyos-resumen-\d{4}-\d{2}\.png/.test(saved.name), `Imagen del resumen generada (${Math.round(saved.size / 1024)} KB)`);
+  await page.screenshot({ path: path.join(shots, `web-ipad-mensual-${browserName}.png`) });
   await page.click('[data-testid=nav-dashboard]');
+  await page.waitForSelector('[data-testid=challenges]');
+  check((await page.locator('[data-testid=challenges] .challenge').count()) > 0, `Retos de la semana: ${await page.locator('[data-testid=challenges] .challenge').count()}`);
 
   console.log('▶ Persistencia al recargar');
   await page.reload();

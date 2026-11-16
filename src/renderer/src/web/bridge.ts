@@ -218,7 +218,7 @@ export async function createWebBridge() {
     },
 
     // .ics: descarga directa (Safari en iPad ofrece "Agregar al calendario" al abrirlo).
-    'file:save': (name: string, content: string, mime: string) => saveFile(name, content, mime, mime !== 'text/calendar'),
+    'file:save': (name: string, content: string | Uint8Array, mime: string) => saveFile(name, content, mime, mime !== 'text/calendar'),
     'app:info': async () => ({
       version: __APP_VERSION__,
       dataDir: 'Almacenamiento interno de este navegador (IndexedDB)',

@@ -111,9 +111,12 @@ export function buildMealPrep(plan: MealPlan, foods: Food[], days: number[]): Me
     .sort((a, b) => a.info.order - b.info.order || b.info.minutes - a.info.minutes);
 
   // Tiempo: los pasivos largos corren en paralelo; los activos se suman.
-  const activeMinutes = batches.reduce((a, b) => a + b.info.activeMin, 0) + Math.ceil(containers.length * 1.5);
+  // Cocinar: lo pasivo (horno, olla) corre en paralelo con lo activo. Empacar va al final.
+  const cookingActive = batches.reduce((a, b) => a + b.info.activeMin, 0);
+  const packing = Math.ceil(containers.length * 1.5);
   const longest = batches.reduce((a, b) => Math.max(a, b.info.minutes), 0);
-  const totalMinutes = Math.max(longest + 10, activeMinutes);
+  const activeMinutes = cookingActive + packing;
+  const totalMinutes = Math.max(longest, cookingActive) + packing + 10;
 
   const steps: string[] = [];
   const legumes = batches.filter((b) => b.info.order === 1);

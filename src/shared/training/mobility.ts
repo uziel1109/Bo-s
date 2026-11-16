@@ -63,6 +63,14 @@ export function mobilityFor(patterns: Pattern[], injuries: BodyRegion[] = [], ma
     const fallback = DRILLS.filter((d) => ['balanceo_piernas', 'dislocaciones', 'bicho_muerto', 'sentadilla_profunda'].includes(d.id));
     return { drills: fallback, seconds: fallback.reduce((a, d) => a + d.seconds, 0), focus: 'General' };
   }
+  // Mínimo 5 minutos: se completa con ejercicios generales (core y cadera calientan para cualquier sesión).
+  for (const id of ['bicho_muerto', 'balanceo_piernas', 'sentadilla_profunda', 'puente']) {
+    if (total >= 300) break;
+    const d = DRILLS.find((x) => x.id === id)!;
+    if (out.includes(d) || total + d.seconds > maxSeconds) continue;
+    out.push(d);
+    total += d.seconds;
+  }
   // Orden práctico: de pie primero, en el piso al final.
   const floor = new Set(['puente', 'bicho_muerto', 'flexor_cadera']);
   out.sort((a, b) => Number(floor.has(a.id)) - Number(floor.has(b.id)));

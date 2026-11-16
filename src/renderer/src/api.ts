@@ -29,7 +29,7 @@ export const api = {
   aiAnalyzeFood: (b64: string, mediaType: 'image/jpeg', foods: { id: string; name: string }[], planHint?: string) => inv<string>('ai:analyzeFood', b64, mediaType, foods, planHint),
   info: () => inv<{ version: string; dataDir: string; photoEncryption: string; platform: string; persisted?: boolean }>('app:info'),
   openDataFolder: () => inv<string>('app:openDataFolder'),
-  saveFile: (name: string, content: string, mime: string) => inv<string | null>('file:save', name, content, mime),
+  saveFile: (name: string, content: string | Uint8Array, mime: string) => inv<string | null>('file:save', name, content, mime),
   pathForFile: (f: File) => window.bodyos.pathForFile(f),
   /** Agrega una foto desde un archivo arrastrado o seleccionado. */
   addPhotoFile: (f: File, meta: object) => (isWeb() ? inv<Record<string, unknown>>('photos:addFile', f, meta) : inv<Record<string, unknown>>('photos:addFromPath', window.bodyos.pathForFile(f), meta)),

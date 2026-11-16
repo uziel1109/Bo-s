@@ -52,7 +52,8 @@ describe('Movilidad guiada', () => {
     expect(legs.seconds).toBeLessThanOrEqual(480);
     const upper = mobilityFor(['empuje_horizontal', 'empuje_vertical', 'traccion_vertical']);
     expect(upper.focus).toBe('Tren superior');
-    expect(upper.drills.every((d) => d.regions.includes('hombro'))).toBe(true);
+    expect(upper.drills.filter((d) => d.regions.includes('hombro')).length).toBe(3);
+    expect(upper.seconds).toBeGreaterThanOrEqual(300);
     const full = mobilityFor(['sentadilla', 'empuje_horizontal', 'traccion_horizontal', 'bisagra']);
     expect(full.focus).toBe('Cuerpo completo');
     expect(full.drills.some((d) => d.regions.includes('hombro')) && full.drills.some((d) => d.regions.includes('tobillo') || d.regions.includes('cadera'))).toBe(true);

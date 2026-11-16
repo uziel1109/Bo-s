@@ -12,8 +12,9 @@ import { getExercise } from '@shared/training/exercises';
 import type { BodyLog } from '@shared/types';
 import { addDays, formatDateShort, round } from '@shared/utils';
 import { api, usePhotoUrl } from '../api';
+import { MonthlyView } from '../components/Monthly';
 
-type Tab = 'graficas' | 'fotos' | 'comparar' | 'estadisticas' | 'recuperacion';
+type Tab = 'graficas' | 'mensual' | 'fotos' | 'comparar' | 'estadisticas' | 'recuperacion';
 
 export function Progress() {
   const [tab, setTab] = useState<Tab>('graficas');
@@ -25,6 +26,7 @@ export function Progress() {
         onChange={setTab}
         tabs={[
           { value: 'graficas', label: 'Gráficas' },
+          { value: 'mensual', label: 'Resumen mensual' },
           { value: 'fotos', label: 'Fotos' },
           { value: 'comparar', label: 'Comparar fotos' },
           { value: 'estadisticas', label: 'Estadísticas' },
@@ -32,6 +34,7 @@ export function Progress() {
         ]}
       />
       {tab === 'graficas' && <Charts />}
+      {tab === 'mensual' && <MonthlyView />}
       {tab === 'fotos' && <Photos />}
       {tab === 'comparar' && <Compare />}
       {tab === 'estadisticas' && <Stats />}

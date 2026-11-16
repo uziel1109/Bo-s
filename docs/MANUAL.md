@@ -53,11 +53,19 @@ Cada afirmación lleva una etiqueta:
 - **Código de barras:** escribe el número o usa un lector USB. Se busca primero en tu base; si no existe y hay internet, en Open Food Facts (revisa los valores antes de guardar).
 - **Foto del plato (IA):** toca el ícono de cámara en cualquier comida (o *Foto* en el Dashboard), toma la foto y pulsa *Analizar*. La IA identifica el platillo y cada elemento y estima los gramos; las calorías y macros se calculan con tus alimentos verificados (USDA o tu etiqueta) y solo lo que no está en tu base usa valores estimados por la IA (marcado como tal). Verás qué del plan sí está en el plato y qué no; al agregar, puedes **reemplazar** lo que ya habías registrado en esa comida. Los gramos a simple vista tienen un error de ±20–30 %: si pesas la porción y corriges los gramos, el cálculo es exacto. Requiere activar la IA (Inteligencia artificial → Configuración de IA); la foto solo se envía al tocar *Analizar* y no se guarda.
 
+- **Recetas:** en *Recetas y frecuentes* hay 24 recetas mexicanas fit (chilaquiles horneados, tinga, enchiladas suizas ligeras, pozole de pollo, ceviche, molletes de claras…) con ingredientes, preparación y macros por porción calculados con los alimentos verificados. En el plan, el botón *Receta* de cada comida muestra primero las que mejor encajan y ajusta las porciones (en cuartos) a las calorías de esa comida.
+- **Preparación:** elige desde qué día y cuántos días vas a cocinar. Verás qué cocinar (en crudo y cocido), el paso a paso empezando por lo más tardado, el tiempo estimado y cada recipiente por día y comida. Lo cocido dura 3–4 días en refrigeración: los recipientes del día 5 en adelante se marcan para congelar (y el pescado después del día 2).
+- **Fases y eventos:** muestra el objetivo de cada día de la semana. *Fase de mantenimiento*: al estar a 1 punto de tu % de grasa meta (o a 1 kg del peso meta) la app te lo sugiere; sube calorías de forma gradual (≈125 kcal/semana) o directa (2 semanas) hasta tu mantenimiento, y te da el rango de peso a cuidar. *Descansos de dieta*: 1–2 semanas en mantenimiento cada 6–12 semanas; la fecha estimada se recorre esos días. *Días de recarga*: carbohidratos a mantenimiento en tus días de pierna (o los que elijas), compensando en los demás días si quieres que el promedio semanal no cambie. *Eventos*: marca la fecha y las calorías extra; la app ahorra hasta 300 kcal/día en los días previos sin bajar del mínimo seguro. El registro diario y el Dashboard usan siempre el objetivo del día.
+- **Saciedad:** después de comer, califica del 1 al 5 qué tan lleno quedaste (debajo de cada comida). Con 8 o más calificaciones verás qué alimentos te sacian más y cuáles te dejan con hambre, y si la proteína o la fibra marcan diferencia en ti. *Priorizarlos en mi plan* los agrega a tus alimentos preferidos para el próximo plan.
+
 ## 5. Entrenamiento
 
 - **Mi rutina:** división elegida y su justificación, ejercicios por día con series/reps/RIR/descanso. Ajusta series con − / +. *Regenerar* muestra una propuesta antes de reemplazar.
 - **Sesión de hoy:** junto a cada ejercicio verás la recomendación de progresión (*Subir peso*, *Sumar repeticiones*, *Mantener*, *Reducir carga*, *Revisar dolor*). Con ↻ cambias por una alternativa; con ⓘ ves la técnica.
 - **Calentamiento y discos:** en los ejercicios compuestos verás las series de aproximación sugeridas (no cuentan como series de trabajo) y, en los de barra, el botón *Discos* indica qué discos poner por lado (barra de 20 kg).
+- **¿Dónde entrenas hoy?** Antes de comenzar elige *Gimnasio de hotel*, *Casa con mancuernas*, *Peso corporal y bandas*, *Parque* o *Elegir equipo*. Cada ejercicio que no se pueda hacer se cambia por el más parecido para el mismo músculo (verás la lista de cambios); si no hay equivalente, se omite ese día. Con peso corporal sube el rango de repeticiones.
+- **Movilidad:** antes de la sesión aparece una rutina de 5–8 minutos elegida según los ejercicios del día (tobillo y cadera antes de pierna, hombro antes de torso). *Guiada* la reproduce con temporizador, animación y aviso al cambiar de ejercicio.
+- **Modo gimnasio:** durante la sesión toca *Modo gimnasio*: pantalla completa con un ejercicio a la vez, botones grandes de peso y repeticiones, *Serie hecha* y el descanso en grande con *+30 s* y *Saltar*. La pantalla no se apaga (iPadOS 16.4 o posterior) y al terminar el descanso suena un aviso. Sube el volumen y desactiva el modo silencio para oírlo.
 - **RIR** = repeticiones que te quedaron en reserva. RIR 2 = podías hacer 2 más.
 - **Progresión:** se sube el peso solo cuando completas el tope del rango en todas las series con el esfuerzo previsto. Si marcas dolor, no se progresa.
 - **Por músculo:** series efectivas por semana, frecuencia y recuperación estimada.
@@ -71,6 +79,9 @@ Cada afirmación lleva una etiqueta:
 ## 7. Progreso
 
 Gráficas por periodo, fotos cifradas (arrastra o selecciona; registra luz, hora, ropa y distancia), comparación lado a lado (avisa si las condiciones no coinciden), estadísticas y rachas.
+
+- **Resumen mensual:** en Progreso → *Resumen mensual* verás el cambio de peso (tendencia), cintura y % de grasa del mes, entrenamientos, días registrados y marcas personales. *Guardar imagen* crea una tarjeta lista para guardar en Fotos o compartir.
+- **Retos semanales (Dashboard):** cada lunes se eligen 3 retos según lo que más te costó la semana anterior, con metas un poco por encima de lo que lograste. No cambian durante la semana; cumplir todos suma a tu racha.
 
 ## 8. Inteligencia artificial
 
