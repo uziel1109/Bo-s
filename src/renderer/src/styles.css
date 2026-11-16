@@ -2643,3 +2643,122 @@ details.supp-group[open] > summary::after {
   color: var(--cc);
   background: color-mix(in srgb, var(--cc) 18%, transparent);
 }
+
+/* ── Hipertrofia */
+.vol-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 54px;
+  grid-template-areas: 'name bar num' 'why why why';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.vol-row:last-child {
+  border-bottom: 0;
+}
+.vol-name {
+  grid-area: name;
+  font-size: 13px;
+  font-weight: 600;
+}
+.vol-num {
+  grid-area: num;
+  text-align: right;
+  font-weight: 750;
+}
+.vol-why {
+  grid-area: why;
+}
+.vol-bar {
+  grid-area: bar;
+  position: relative;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--surface-3);
+}
+.vol-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--m-violet), var(--m-lime));
+}
+.vol-bar i {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text-2);
+  opacity: 0.5;
+}
+.fb-card {
+  border: 1.5px dashed color-mix(in srgb, var(--m-violet) 55%, var(--border));
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--m-violet) 6%, transparent);
+}
+.fb-card.done {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--m-green) 50%, var(--border));
+}
+.fb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.gym-feedback {
+  width: min(560px, 100%);
+  text-align: left;
+  margin-top: 8px;
+}
+.tech-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tech-diagram {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  padding: 8px 4px 22px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.tech-bar {
+  flex: 1;
+  min-width: 6px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--m-lime), var(--m-green));
+  transform-origin: bottom;
+  animation: barin 0.35s ease both;
+}
+.tech-gap {
+  flex: 1.6;
+  font-size: 9.5px;
+  color: var(--muted);
+  text-align: center;
+  align-self: center;
+}
+.tech-legend {
+  position: absolute;
+  left: 8px;
+  bottom: 4px;
+}
+@keyframes barin {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.mp-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.mp-row:last-child {
+  border-bottom: 0;
+}

@@ -1,7 +1,7 @@
 // Generador de rutinas: elige la división según días disponibles y experiencia, y rellena cada sesión
 // con los mejores ejercicios disponibles para el equipo, lesiones y exclusiones del usuario.
 import type { Equipment, Experience, Muscle, Profile } from '../types';
-import { EXERCISES, isAvailable, type Exercise, type Pattern } from './exercises';
+import { EXERCISES, isAvailable, type Exercise, type Pattern, stretchOf } from './exercises';
 
 export type SplitKey = 'full_body' | 'upper_lower' | 'ppl' | 'ul_ppl';
 
@@ -208,6 +208,7 @@ function candidates(slot: Slot, p: { equipment: Equipment[]; injuries: string[];
     if (p.cautious && e.equipment.includes('maquinas')) s -= 1;
     if (e.equipment.includes('barra') && p.experience === 'principiante') s += 0.5;
     if (e.equipment.includes('bandas') || e.equipment.includes('peso_corporal')) s += 0.8; // preferir carga externa si existe
+    s -= 0.6 * (stretchOf(e.id) - 1); // hipertrofia: preferir ejercicios que cargan el músculo estirado
     return s;
   };
   const list = ok.sort((a, b) => score(a) - score(b)).map((ex) => ({ ex }));
@@ -275,6 +276,8 @@ export function generateRoutine(p: Pick<Profile, 'trainingDays' | 'sessionMinute
       else if (cand.priority >= 3) exs.splice(exs.indexOf(cand), 1);
       else break;
     }
+    // Músculos prioritarios primero (más frescos = más estímulo); el resto conserva su orden.
+    exs.sort((a, b) => Number(p.priorityMuscles.includes(EXERCISES.find((x) => x.id === b.exerciseId)!.primary)) - Number(p.priorityMuscles.includes(EXERCISES.find((x) => x.id === a.exerciseId)!.primary)));
     return {
       key: `${k}-${i}`,
       name: tpl.name,
@@ -295,5 +298,7 @@ export function generateRoutine(p: Pick<Profile, 'trainingDays' | 'sessionMinute
   const tgt = weeklySetTarget(p.experience);
   rationale.push(`Volumen orientativo: ~${tgt} series efectivas por músculo y semana (rango basado en evidencia: 10–20).`);
   rationale.push('Repeticiones: compuestos 6–10 a RIR 2; aislamientos 10–15 a RIR 1. En déficit se mantiene la intensidad para preservar fuerza y músculo.');
+  rationale.push('Se prefieren ejercicios que cargan el músculo en estiramiento (más hipertrofia según la evidencia reciente).');
+  if (p.priorityMuscles.length) rationale.push('Tus músculos prioritarios llevan una serie extra y van al inicio de la sesión.');
   return { split, splitLabel: SPLIT_LABEL[split], daysPerWeek: routineDays.length, rationale, days: routineDays, weeklySets, createdAt: new Date().toISOString() };
 }

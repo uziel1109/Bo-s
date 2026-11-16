@@ -8,6 +8,7 @@ import type { MealPlan } from '@shared/nutrition/mealPlanner';
 import type { StackItem } from '@shared/calendar';
 import type { PhaseSettings } from '@shared/nutrition/phases';
 import type { MealRating } from '@shared/analytics/satiety';
+import type { MuscleFeedback } from '@shared/training/hypertrophy';
 import { today as todayFn, uid } from '@shared/utils';
 
 export interface PhotoRow {
@@ -35,6 +36,7 @@ export interface Store {
   recipes: { id: string; name: string; items: { foodId: string; grams: number }[]; servings: number; notes: string | null }[];
   favorites: { id: string; name: string; items: { foodId: string | null; name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number; fiber: number }[] }[];
   mealRatings: MealRating[];
+  muscleFeedback: MuscleFeedback[];
   calendarTasks: { id: string; date: string; task_key: string; title: string; type: string; done: number; custom: number }[];
   settings: Record<string, unknown>;
   reload: () => Promise<void>;
@@ -75,7 +77,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
-      const [profileRow, foods, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions, routines, plans, adjustments, mealPlans, stack, supplementLogs, photos, recipes, favorites, calendarTasks, settingsRows, mealRatings] = await Promise.all([
+      const [profileRow, foods, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions, routines, plans, adjustments, mealPlans, stack, supplementLogs, photos, recipes, favorites, calendarTasks, settingsRows, mealRatings, muscleFeedback] = await Promise.all([
         api.get<{ data: Profile }>('profile', 1),
         api.list<Food>('foods', { orderBy: { column: 'name' } }),
         api.list<BodyLog>('body_logs', { orderBy: { column: 'date' } }),
@@ -97,6 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         api.list<Store['calendarTasks'][number]>('calendar_tasks'),
         api.list<{ key: string; value: unknown }>('settings'),
         api.list<MealRating>('meal_ratings', { orderBy: { column: 'date' } }),
+        api.list<MuscleFeedback>('muscle_feedback', { orderBy: { column: 'date' } }),
       ]);
       const profile = profileRow?.data ?? null;
       const routine = routines[0] ? { ...routines[0].data, id: routines[0].id } : null;
@@ -118,6 +121,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         favorites,
         calendarTasks,
         mealRatings,
+        muscleFeedback,
         settings: settingsMap,
       });
       setError(null);
@@ -216,6 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     favorites: raw?.favorites ?? [],
     calendarTasks: raw?.calendarTasks ?? [],
     mealRatings: raw?.mealRatings ?? [],
+    muscleFeedback: raw?.muscleFeedback ?? [],
     settings: raw?.settings ?? {},
     reload,
     saveProfile,

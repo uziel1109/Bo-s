@@ -54,6 +54,7 @@ export const SCHEMA: Record<string, TableSpec> = {
   photos: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', pose: 'TEXT', file_name: 'TEXT', conditions: 'JSON', notes: 'TEXT' }, indexes: ['date'] },
   calendar_tasks: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', task_key: 'TEXT', title: 'TEXT', type: 'TEXT', done: 'INTEGER', custom: 'INTEGER' }, indexes: ['date'] },
   meal_ratings: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', meal: 'TEXT', fullness: 'INTEGER', notes: 'TEXT' }, indexes: ['date'] },
+  muscle_feedback: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', session_id: 'TEXT', muscle: 'TEXT', pump: 'INTEGER', soreness: 'INTEGER', joint: 'INTEGER' }, indexes: ['date'] },
   weekly_reports: { pk: 'id', columns: { id: 'TEXT', week_start: 'TEXT', created_at: 'TEXT', data: 'JSON' } },
 };
 

@@ -1,6 +1,6 @@
 // Modo gimnasio: pantalla completa con botones grandes, una serie a la vez, temporizador de descanso
 // visible, pantalla siempre encendida y aviso sonoro/vibración al terminar el descanso.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight, Minus, Plus, SkipForward, Sun, X } from 'lucide-react';
 import type { SetLog, WorkoutSession } from '@shared/types';
 import { getExercise } from '@shared/training/exercises';
@@ -19,6 +19,8 @@ export interface GymModeProps {
   onSkipRest: () => void;
   onExit: () => void;
   onFinish: () => void;
+  /** Tarjeta de retroalimentación del músculo al terminar su último ejercicio (mesociclo). */
+  feedback?: (ei: number) => ReactNode;
 }
 
 export function GymMode(p: GymModeProps) {
@@ -73,7 +75,8 @@ export function GymMode(p: GymModeProps) {
     const last = si === e.sets.length - 1;
     // Prellenar la siguiente serie con el mismo peso.
     if (!last && !e.sets[si + 1].weight) p.onUpdateSet(ei, si + 1, { weight: set.weight });
-    if (last && ei < p.session.exercises.length - 1) setTimeout(() => setEi(ei + 1), 400);
+    // Con mesociclo activo se queda en el ejercicio para calificar el músculo; si no, avanza solo.
+    if (last && ei < p.session.exercises.length - 1 && !p.feedback) setTimeout(() => setEi(ei + 1), 400);
     if (!(last && ei === p.session.exercises.length - 1)) p.onStartRest(p.restSecFor(ei));
   };
 
@@ -120,7 +123,10 @@ export function GymMode(p: GymModeProps) {
           <div className="gym-anim">{ex && <ExerciseAnimation exerciseId={ex.id} size={170} />}</div>
           <div className="gym-target">
             {allDone ? (
-              <b style={{ color: 'var(--m-green)' }}>Ejercicio completado ✓</b>
+              <>
+                <b style={{ color: 'var(--m-green)' }}>Ejercicio completado ✓</b>
+                {p.feedback?.(ei) && <div className="gym-feedback">{p.feedback(ei)}</div>}
+              </>
             ) : (
               <>
                 Serie <b>{si + 1}</b> de {e.sets.length} · {e.repMin}–{e.repMax} reps · RIR {e.targetRir}

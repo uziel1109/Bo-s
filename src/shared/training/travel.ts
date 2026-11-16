@@ -42,7 +42,8 @@ export function substituteFor(id: string, equipment: Equipment[], injuries: Body
 
 /** Adapta el día de la rutina al equipo disponible. */
 export function adaptDay(day: RoutineDay, equipment: Equipment[], injuries: BodyRegion[] = [], excluded: string[] = []): { day: RoutineDay; changes: Substitution[] } {
-  const taken = new Set<string>();
+  // Los ejercicios que se conservan se reservan desde el inicio para que ningún sustituto los repita.
+  const taken = new Set<string>(day.exercises.filter((e) => { const ex = getExercise(e.exerciseId); return ex && isAvailable(ex, equipment, injuries, excluded); }).map((e) => e.exerciseId));
   const changes: Substitution[] = [];
   const exercises: RoutineExercise[] = [];
   for (const e of day.exercises) {

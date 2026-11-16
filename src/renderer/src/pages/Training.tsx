@@ -4,13 +4,15 @@ import { Hero } from '../components/visual';
 import { useApp } from '../store';
 import { Alert, Card, Chips, Claims, DetailsHint, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { GymMode } from '../components/GymMode';
+import { MesocycleView, MuscleFeedbackCard, MuscleProgressPanel, StretchBadge, TechniqueToggle, useMeso } from '../components/Hypertrophy';
+import { rirForWeek, techniqueFor } from '@shared/training/hypertrophy';
 import { MobilityCard, useMobility } from '../components/Mobility';
 import { restDoneAlert, unlockAudio } from '../lib/gym';
 import { adaptDay, LOCATIONS, type LocationKey } from '@shared/training/travel';
 import { SimpleBars, SimpleLine } from '../components/charts';
 import { MuscleMap } from '../components/MuscleMap';
 import { ExerciseAnimation } from '../components/ExerciseAnimation';
-import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REGION_LABEL, type Exercise } from '@shared/training/exercises';
+import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REGION_LABEL, stretchOf, type Exercise } from '@shared/training/exercises';
 import { generateRoutine, weeklySetTarget, type Routine, type RoutineDay } from '@shared/training/generator';
 import { platesFor, warmupSets } from '@shared/training/warmup';
 import { bestE1rm, deloadAdvice, exerciseHistory, muscleWeekStats, progressionAdvice, sessionVolume, type ProgressionAdvice } from '@shared/training/progression';
@@ -26,7 +28,7 @@ function fmtRest(sec: number): string {
   return s ? `${m}:${String(s).padStart(2, '0')} min` : `${m} min`;
 }
 
-type Tab = 'sesion' | 'rutina' | 'progresion' | 'musculos' | 'ejercicios' | 'historial';
+type Tab = 'sesion' | 'rutina' | 'meso' | 'progresion' | 'musculos' | 'ejercicios' | 'historial';
 
 export function Training() {
   const [tab, setTab] = useState<Tab>('sesion');
@@ -39,6 +41,7 @@ export function Training() {
         tabs={[
           { value: 'sesion', label: 'Sesión de hoy' },
           { value: 'rutina', label: 'Mi rutina' },
+          { value: 'meso', label: 'Mesociclo' },
           { value: 'progresion', label: 'Progresión' },
           { value: 'musculos', label: 'Por músculo' },
           { value: 'ejercicios', label: 'Ejercicios' },
@@ -48,6 +51,7 @@ export function Training() {
       {tab === 'sesion' && <SessionLogger />}
       {tab === 'rutina' && <RoutineView />}
       {tab === 'progresion' && <ProgressionView />}
+      {tab === 'meso' && <MesocycleView />}
       {tab === 'musculos' && <MuscleView />}
       {tab === 'ejercicios' && <Library />}
       {tab === 'historial' && <History />}
@@ -104,7 +108,9 @@ function SessionLogger() {
   const [sessionDay, setSessionDay] = useState<RoutineDay | null>(null);
   const sessionRef = useRef<WorkoutSession | null>(existing);
   sessionRef.current = session;
-  const baseDay = routine?.days.find((d) => d.key === dayKey) ?? null;
+  const meso = useMeso();
+  const planRoutine = meso.routine ?? routine;
+  const baseDay = planRoutine?.days.find((d) => d.key === dayKey) ?? null;
   const placeEq: Equipment[] | null = place === 'gimnasio' ? null : place === 'personalizado' ? customEq : LOCATIONS[place].equipment;
   const adapted = useMemo(() => (baseDay && placeEq ? adaptDay(baseDay, placeEq, profile.injuries, profile.excludedExercises) : baseDay ? { day: baseDay, changes: [] } : null), [baseDay, placeEq?.join(), profile.injuries, profile.excludedExercises]);
   const mobility = useMobility(adapted?.day, profile.injuries);
@@ -131,7 +137,7 @@ function SessionLogger() {
     unlockAudio();
     startRef.current = Date.now();
     setSessionDay(day);
-    setSession({ id: uid('s_'), date: today, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted), completed: 0, notes: place !== 'gimnasio' ? `Entreno en: ${place === 'personalizado' ? 'equipo personalizado' : LOCATIONS[place].label}` : null });
+    setSession({ id: uid('s_'), date: today, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted && !meso.active), completed: 0, notes: place !== 'gimnasio' ? `Entreno en: ${place === 'personalizado' ? 'equipo personalizado' : LOCATIONS[place].label}` : null });
   };
 
   const persist = async (s: WorkoutSession) => {
@@ -170,7 +176,12 @@ function SessionLogger() {
     return (
       <div className="col" style={{ gap: 16 }}>
         {doneToday.length > 0 && <Alert kind="ok">Ya completaste hoy: {doneToday.map((s) => s.day_name).join(', ')}.</Alert>}
-        {deloadAccepted && <Alert kind="info">Semana de descarga activa: las series se reducen a la mitad manteniendo cargas similares.</Alert>}
+        {meso.active && meso.week && (
+          <Alert kind={meso.week.deload ? 'info' : 'ok'}>
+            {meso.week.deload ? 'Semana de descarga del mesociclo: mitad de series, mismos pesos y lejos del fallo.' : `Mesociclo · semana ${meso.week.week} de ${meso.meso!.weeks}: compuestos a RIR ${rirForWeek(meso.week.week, meso.meso!.weeks, true)}, aislamientos a RIR ${rirForWeek(meso.week.week, meso.meso!.weeks, false)}. Las series ya incluyen los ajustes de tu retroalimentación.`}
+          </Alert>
+        )}
+        {deloadAccepted && !meso.active && <Alert kind="info">Semana de descarga activa: las series se reducen a la mitad manteniendo cargas similares.</Alert>}
         <Card title="Iniciar sesión">
           <div className="row">
             <select className="input" style={{ maxWidth: 380 }} value={dayKey ?? ''} onChange={(e) => setDayKey(e.target.value)} data-testid="session-day">
@@ -213,6 +224,15 @@ function SessionLogger() {
     );
 
   const restLeft = rest ? Math.max(0, Math.ceil((rest.until - Date.now()) / 1000)) : 0;
+  /** Músculo a calificar después de este ejercicio: el último ejercicio de ese músculo en la sesión, ya terminado. */
+  const feedbackMuscle = (ei: number): Muscle | null => {
+    if (!meso.active || meso.week?.deload) return null;
+    const ex = session.exercises[ei];
+    const mu = getExercise(ex.exerciseId)?.primary;
+    if (!mu || !ex.sets.some((x) => x.done) || ex.sets.some((x) => !x.done)) return null;
+    const lastIdx = session.exercises.map((x) => getExercise(x.exerciseId)?.primary).lastIndexOf(mu);
+    return lastIdx === ei ? mu : null;
+  };
   return (
     <div className="col" style={{ gap: 14 }}>
       {gym && (
@@ -229,13 +249,16 @@ function SessionLogger() {
           onStartRest={(sec) => setRest({ until: Date.now() + sec * 1000, total: sec })}
           onAddRest={(sec) => setRest((r) => (r ? { until: r.until + sec * 1000, total: r.total + sec } : r))}
           onSkipRest={() => setRest(null)}
+          feedback={!meso.active ? undefined : (i) => (feedbackMuscle(i) ? <MuscleFeedbackCard sessionId={session.id} date={session.date} muscle={feedbackMuscle(i)!} compact /> : null)}
           onExit={() => setGym(false)}
           onFinish={finish}
         />
       )}
       <div className="row between">
         <div>
-          <h2>{session.day_name}</h2>
+          <h2>
+            {session.day_name} {meso.active && meso.week && <span className="badge accent">{meso.week.deload ? 'Descarga' : `Semana ${meso.week.week}/${meso.meso!.weeks}`}</span>}
+          </h2>
           <div className="small muted">Registra peso, repeticiones y RIR (repeticiones que te quedaron en reserva).</div>
         </div>
         <div className="row">
@@ -343,6 +366,17 @@ function SessionLogger() {
                 </button>
               </div>
             ))}
+            {(() => {
+              const tq = meso.active && meso.meso!.techniques && meso.week && meso.week.week >= 2 && !meso.week.deload ? techniqueFor(ex, profile.injuries) : null;
+              const li = e.sets.length - 1;
+              const last = e.sets[li];
+              return tq && last ? (
+                <div className="row small mt4" style={{ gap: 8 }}>
+                  <span className="tiny muted">Última serie:</span>
+                  <TechniqueToggle technique={tq} active={!!last.technique} extraReps={last.extraReps} onToggle={() => updateSet(ei, li, { technique: last.technique ? null : tq })} onExtra={(n) => updateSet(ei, li, { extraReps: n })} />
+                </div>
+              ) : null;
+            })()}
             <div className="row mt8">
               <button
                 className="btn sm ghost"
@@ -368,6 +402,7 @@ function SessionLogger() {
                 }}
               />
             </div>
+            {feedbackMuscle(ei) && <div className="mt12"><MuscleFeedbackCard sessionId={session.id} date={session.date} muscle={feedbackMuscle(ei)!} /></div>}
           </div>
         );
       })}
@@ -488,14 +523,14 @@ function DayPreview({ day }: { day: RoutineDay }) {
 function SwapModal({ current, onClose, onPick }: { current: string; onClose: () => void; onPick: (ex: Exercise) => void }) {
   const { profile } = useApp();
   const ex = getExercise(current);
-  const alts = EXERCISES.filter((e) => e.id !== current && (ex?.alternatives.includes(e.id) || e.primary === ex?.primary) && isAvailable(e, profile.equipment, profile.injuries, profile.excludedExercises));
+  const alts = EXERCISES.filter((e) => e.id !== current && (ex?.alternatives.includes(e.id) || e.primary === ex?.primary) && isAvailable(e, profile.equipment, profile.injuries, profile.excludedExercises)).sort((a, b) => stretchOf(b.id) - stretchOf(a.id));
   return (
     <Modal title="Ejercicios alternativos" onClose={onClose}>
       <div className="col">
         {alts.map((a) => (
           <div className="list-item" key={a.id}>
             <div className="grow">
-              <b>{a.name}</b>
+              <b>{a.name}</b> <StretchBadge id={a.id} />
               <div className="tiny muted">
                 {MUSCLE_LABEL[a.primary]} · {a.equipment.map((e) => EQUIPMENT_LABEL[e]).join(', ')} {ex?.alternatives.includes(a.id) && '· equivalente recomendado'}
               </div>
@@ -531,6 +566,7 @@ export function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => vo
               </span>
             ))}
             <span className="badge info">{ex.compound ? 'Compuesto' : 'Aislamiento'}</span>
+            <StretchBadge id={ex.id} />
           </div>
           <div className="small muted">Equipo: {ex.equipment.map((e) => EQUIPMENT_LABEL[e]).join(', ')}{ex.stress.length ? ` · Exige: ${ex.stress.map((r) => REGION_LABEL[r]).join(', ')}` : ''}</div>
           <div>
@@ -794,6 +830,7 @@ function MuscleView() {
   const muscles = (Object.keys(MUSCLE_LABEL) as Muscle[]).filter((m) => !['antebrazo', 'lumbares', 'aductores'].includes(m));
   return (
     <div className="col" style={{ gap: 16 }}>
+      <MuscleProgressPanel />
       <Card title="Semana actual por grupo muscular" hint={`Objetivo orientativo ≈ ${tgt} series efectivas`}>
         <table className="table">
           <thead>
@@ -869,7 +906,7 @@ function Library() {
             <div className="row nowrap" style={{ alignItems: 'flex-start' }}>
               <ExerciseAnimation exerciseId={e.id} size={96} still />
               <div className="col" style={{ gap: 4 }}>
-                <b>{e.name}</b>
+                <b>{e.name}</b> <StretchBadge id={e.id} />
                 <span className="small muted">{MUSCLE_LABEL[e.primary]}</span>
                 <span className="tiny muted">{e.equipment.map((x) => EQUIPMENT_LABEL[x]).join(', ')}</span>
               </div>

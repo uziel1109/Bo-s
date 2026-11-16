@@ -253,6 +253,54 @@ try {
   }
   await page.click('[data-testid=nav-dashboard]');
 
+  console.log('▶ Hipertrofia: mesociclo, retroalimentación y RIR');
+  await page.click('[data-testid=nav-entrenamiento]');
+  await page.click('.tabs button:has-text("Mesociclo")');
+  await page.click('.seg button:has-text("Esta semana")');
+  await page.click('[data-testid=meso-start]');
+  await page.waitForSelector('[data-testid=meso-volume]');
+  await page.screenshot({ path: path.join(shots, `web-ipad-mesociclo-${browserName}.png`), fullPage: true });
+  check((await page.textContent('[data-testid=meso-weeks]')).includes('Descarga'), 'Mesociclo iniciado con semanas de RIR progresivo y descarga');
+  await page.click('.tabs button:has-text("Sesión de hoy")');
+  check((await page.textContent('.page')).includes('Mesociclo · semana 1'), 'La sesión muestra la semana y el RIR del mesociclo');
+  await page.click('[data-testid=session-start]');
+  await page.waitForSelector('[data-testid=ex-0]');
+  let fbShown = false;
+  for (let ei = 0; ei < 8 && !fbShown; ei++) {
+    const n = await page.locator(`[data-testid^="done-${ei}-"]`).count();
+    if (!n) break;
+    for (let si = 0; si < n; si++) {
+      await page.fill(`[data-testid=w-${ei}-${si}]`, '20');
+      await page.fill(`[data-testid=r-${ei}-${si}]`, '10');
+      await page.click(`[data-testid=done-${ei}-${si}]`);
+    }
+    fbShown = (await page.locator('.fb-card').count()) > 0;
+  }
+  check(fbShown, 'Al terminar un músculo aparece la calificación (bombeo, dolor, articulaciones)');
+  if (fbShown) {
+    const card = page.locator('.fb-card').first();
+    await card.locator('button:has-text("Poco")').click();
+    await card.locator('button:has-text("Nada")').first().click();
+    await page.waitForSelector('.fb-card.done');
+    check(true, 'Calificación del músculo guardada');
+  }
+  await page.screenshot({ path: path.join(shots, `web-ipad-hipertrofia-${browserName}.png`) });
+  await page.click('button:has-text("Descartar")');
+  await page.click('.tabs button:has-text("Mesociclo")');
+  await page.click('[data-testid=rir-test-open]');
+  await page.fill('.modal input[type=number]', '25');
+  await page.click('.modal button:has-text("Listo")');
+  await page.fill('[data-testid=rir-at-guess]', '10');
+  await page.click('.modal button:has-text("Siguiente")');
+  await page.fill('[data-testid=rir-total]', '15');
+  await page.click('[data-testid=rir-save]');
+  await page.waitForSelector('[data-testid=rir-bias]');
+  check((await page.textContent('[data-testid=rir-bias]')).includes('lejos del fallo'), 'Calibración de RIR: detecta que te quedas lejos del fallo');
+  await page.click('.tabs button:has-text("Por músculo")');
+  await page.waitForSelector('text=Fuerza por músculo');
+  check(true, 'Panel de progreso por músculo visible');
+  await page.click('[data-testid=nav-dashboard]');
+
   console.log('▶ Persistencia al recargar');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });

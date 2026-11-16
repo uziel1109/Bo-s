@@ -249,6 +249,8 @@ export interface SetLog {
   rest_s?: number | null;
   done: boolean;
   pain?: boolean;
+  technique?: 'myo' | 'drop' | 'parciales' | null; // técnica avanzada en esta serie
+  extraReps?: number | null; // repeticiones extra de la técnica
 }
 
 export interface ExerciseLog {

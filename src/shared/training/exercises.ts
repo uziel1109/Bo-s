@@ -436,3 +436,28 @@ export function isAvailable(ex: Exercise, equipment: Equipment[], injuries: stri
   if (ex.stress.some((r) => injuries.includes(r))) return false;
   return true;
 }
+
+/**
+ * Carga en posición de estiramiento (músculo largo): 2 = alta, 1 = media, 0 = baja.
+ * Entrenar con el músculo estirado produce igual o más hipertrofia que en posición acortada
+ * (Maeo 2021, 2023; Pedrosa 2022; Wolf 2023). Se usa para elegir y sugerir ejercicios.
+ */
+export const STRETCH: Record<string, 0 | 1 | 2> = {
+  press_banca: 1, press_mancuernas: 2, press_inclinado_mancuernas: 2, press_inclinado_barra: 1, press_maquina_pecho: 1,
+  aperturas_polea: 1, aperturas_mancuernas: 2, pec_deck: 1, lagartijas: 1, fondos: 2,
+  dominadas: 2, dominadas_asistidas: 2, jalon_pecho: 2, jalon_banda: 0, remo_barra: 1, remo_mancuerna: 2, remo_polea: 2, remo_maquina: 1, remo_banda: 0,
+  face_pull: 1, face_pull_banda: 0, pajaros: 1, reverse_pec_deck: 1,
+  press_militar: 1, press_hombro_mancuernas: 1, press_hombro_maquina: 1,
+  elevaciones_laterales: 0, elevaciones_laterales_polea: 2, elevaciones_laterales_banda: 0,
+  curl_barra: 1, curl_mancuernas: 1, curl_martillo: 1, curl_polea: 1, curl_banda: 0,
+  triceps_polea: 0, triceps_frances: 2, triceps_banda: 0, press_cerrado: 1,
+  sentadilla: 2, sentadilla_goblet: 2, prensa: 1, hack_squat: 2, extension_cuadriceps: 1, sentadilla_bulgara: 2, zancadas: 2,
+  peso_muerto_rumano: 2, peso_muerto_rumano_mancuernas: 2, peso_muerto: 1, curl_femoral: 1, curl_femoral_banda: 0, hip_thrust: 0, puente_gluteo: 0,
+  gemelos_pie: 2, gemelos_maquina: 2, plancha: 0, dead_bug: 0, crunch_polea: 1, elevacion_piernas: 1,
+};
+
+export const STRETCH_LABEL = ['Énfasis acortado', 'Estiramiento medio', 'Gran estiramiento'] as const;
+
+export function stretchOf(id: string): 0 | 1 | 2 {
+  return STRETCH[id] ?? 1;
+}
