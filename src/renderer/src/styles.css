@@ -1222,6 +1222,11 @@ textarea.input {
   --m-amber: #ffc53d;
   --m-slate: #93a4b8;
   --glow: 0.22;
+  --anim-body: #e8edf3;
+  --anim-arm: #c9d2dd;
+  --anim-body-2: #8a94a3;
+  --anim-equip: #c8f53c;
+  --anim-prop: #3a424e;
 }
 :root[data-theme='light'] {
   --m-lime: #5c9400;
@@ -1235,6 +1240,11 @@ textarea.input {
   --m-amber: #b45309;
   --m-slate: #475569;
   --glow: 0.12;
+  --anim-body: #1f2937;
+  --anim-arm: #475569;
+  --anim-body-2: #9ca3af;
+  --anim-equip: #4f7d00;
+  --anim-prop: #cbd5e1;
 }
 
 body {
@@ -1795,3 +1805,21 @@ body {
 .plate.p5 { background: #e5e7eb; }
 .plate.p2_5 { background: #9ca3af; height: 30px; }
 .plate.p1_25 { background: #d1d5db; height: 26px; }
+
+/* Animaciones de ejercicios */
+.ex-anim {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--m-lime) 8%, var(--surface-2)), var(--surface-2));
+  padding: 6px;
+  cursor: pointer;
+  flex: none;
+}
+.ex-anim-play {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}

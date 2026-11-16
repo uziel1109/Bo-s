@@ -5,5 +5,5 @@
     "types": ["node"], "composite": true, "noEmit": true,
     "baseUrl": ".", "paths": { "@shared/*": ["src/shared/*"] }
   },
-  "include": ["electron.vite.config.ts", "vite.web.config.ts", "build/*.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*", "vitest.config.ts"]
+  "include": ["electron.vite.config.ts", "vite.web.config.ts", "build/*.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*", "src/renderer/src/lib/exerciseRig.ts", "vitest.config.ts"]
 }

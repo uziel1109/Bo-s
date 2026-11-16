@@ -5,6 +5,7 @@ import { useApp } from '../store';
 import { Alert, Card, Claims, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { SimpleBars, SimpleLine } from '../components/charts';
 import { MuscleMap } from '../components/MuscleMap';
+import { ExerciseAnimation } from '../components/ExerciseAnimation';
 import { EXERCISES, EQUIPMENT_LABEL, getExercise, isAvailable, MUSCLE_LABEL, REGION_LABEL, type Exercise } from '@shared/training/exercises';
 import { generateRoutine, weeklySetTarget, type Routine, type RoutineDay } from '@shared/training/generator';
 import { platesFor, warmupSets } from '@shared/training/warmup';
@@ -434,14 +435,15 @@ function SwapModal({ current, onClose, onPick }: { current: string; onClose: () 
 export function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
   return (
     <Modal title={ex.name} onClose={onClose} wide>
-      <div className="grid g3">
-        <div>
-          <MuscleMap primary={[ex.primary]} secondary={ex.secondary} />
-          <p className="tiny muted" style={{ textAlign: 'center' }}>
-            Diagrama de músculos implicados (no muestra la técnica).
-          </p>
+      <div className="col" style={{ gap: 16 }}>
+        <div className="row" style={{ gap: 20, alignItems: 'center', justifyContent: 'center' }}>
+          <ExerciseAnimation exerciseId={ex.id} size={250} />
+          <MuscleMap primary={[ex.primary]} secondary={ex.secondary} size={150} />
         </div>
-        <div className="span2 col" style={{ gap: 14 }}>
+        <p className="tiny muted" style={{ textAlign: 'center', marginTop: -6 }}>
+          Animación ilustrativa del recorrido (toca para pausar). Revisa la técnica escrita y, si puedes, pide a un entrenador que te corrija en persona.
+        </p>
+        <div className="col" style={{ gap: 14 }}>
           <div className="row">
             <span className="badge accent">{MUSCLE_LABEL[ex.primary]}</span>
             {ex.secondary.map((m) => (
@@ -785,7 +787,7 @@ function Library() {
         {list.map((e) => (
           <button key={e.id} className="card flat" style={{ textAlign: 'left', cursor: 'pointer', color: 'inherit', font: 'inherit' }} onClick={() => setSel(e)}>
             <div className="row nowrap" style={{ alignItems: 'flex-start' }}>
-              <MuscleMap primary={[e.primary]} secondary={e.secondary} size={70} />
+              <ExerciseAnimation exerciseId={e.id} size={96} still />
               <div className="col" style={{ gap: 4 }}>
                 <b>{e.name}</b>
                 <span className="small muted">{MUSCLE_LABEL[e.primary]}</span>

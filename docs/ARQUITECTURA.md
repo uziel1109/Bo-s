@@ -95,6 +95,10 @@ Tablas: `settings`, `profile`, `body_logs`, `foods`, `recipes`, `favorites`, `fo
 | Preguntas libres | Claude (Anthropic) | Pregunta + resumen numérico visible en la app | Asistente local con 9 preguntas clave |
 | Foto de comida | Claude (Anthropic) | La foto elegida | Registro manual |
 
+## Animaciones de ejercicios
+
+`src/renderer/src/components/ExerciseAnimation.tsx` dibuja figuras originales en SVG con cinemática directa: cada patrón de movimiento (sentadilla, bisagra, press, remo, jalón, curl…) define dos posturas por ángulos articulares y un punto de anclaje (pies, cadera, hombros o manos), y la animación interpola entre ellas. No se usan imágenes de terceros: las bases de imágenes "libres" disponibles no documentan el origen de sus fotografías, así que se descartaron para no arriesgar derechos de autor. Respeta la preferencia del sistema de reducir movimiento. `#anim-debug` muestra todas las posturas para revisión.
+
 ## Ampliaciones previstas
 
 - Escaneo de código de barras con cámara (requiere una librería de decodificación; hoy se admite teclado y lectores USB).

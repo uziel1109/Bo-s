@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, Brain, CalendarDays, Droplets, Dumbbell, HeartPulse, LayoutDashboard, LineChart, Pill, Settings as SettingsIcon, User, UtensilsCrossed } from 'lucide-react';
 import { useStore } from './store';
 import { Toasts } from './components/ui';
+import { AnimDebug } from './components/ExerciseAnimation';
 import { IconTile } from './components/visual';
 import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
@@ -46,6 +47,7 @@ export function App() {
     return () => window.removeEventListener('bodyos:nav', h);
   }, []);
 
+  if (location.hash.startsWith('#anim-debug')) return <AnimDebug />;
   if (store.loading)
     return (
       <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
