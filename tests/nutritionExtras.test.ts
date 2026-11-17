@@ -3,6 +3,8 @@ import initSqlJs from 'sql.js';
 import { LocalDB } from '../src/shared/db/localdb';
 import { seedFoods } from '../src/shared/nutrition/foodsSeed';
 import { SEED_RECIPES } from '../src/shared/nutrition/recipesSeed';
+import { BRAND_FOODS } from '../src/shared/nutrition/brandFoods';
+import { syncSeedFoods } from '../src/shared/nutrition/seedSync';
 import { syncSeedRecipes } from '../src/shared/nutrition/seedSync';
 import { recipeFit, recipePerServing, recipeToMeal, replaceMeal } from '../src/shared/nutrition/recipeUse';
 import { buildMealPrep } from '../src/shared/nutrition/mealPrep';
@@ -11,7 +13,7 @@ import { satietyInsights, type MealRating } from '../src/shared/analytics/satiet
 import type { Food, FoodLog } from '../src/shared/types';
 import { addDays } from '../src/shared/utils';
 
-const foods = seedFoods() as Food[];
+const foods = [...seedFoods(), ...BRAND_FOODS] as Food[];
 const ids = new Set(foods.map((f) => f.id));
 
 describe('Recetas incluidas', () => {
@@ -128,14 +130,33 @@ describe('Recetas nuevas al actualizar', () => {
     expect(syncSeedRecipes(db)).toBe(0);
   });
 
-  it('el licuado: 37 g de proteína de la proteína en polvo, ≈ 50 g en total', () => {
+  it('el licuado usa X-Gear Zero Carbs: 37 g de proteína del polvo, ≈ 50 g en total', () => {
     const lic = SEED_RECIPES.find((r) => r.id === 'rec_seed_licuado_avena_leche')!;
-    const whey = foods.find((f) => f.id === 'proteina_whey')!;
-    expect(Math.round((whey.protein * lic.items[0].grams) / 100)).toBe(37);
+    const xg = foods.find((f) => f.id === 'xgear_zero_carbs')!;
+    // Etiqueta: 40 g = 150 kcal y 34 g de proteína.
+    expect(Math.round((xg.kcal * 40) / 100)).toBe(150);
+    expect(Math.round((xg.protein * 40) / 100)).toBe(34);
+    expect(lic.items[0].foodId).toBe('xgear_zero_carbs');
+    expect(Math.round((xg.protein * lic.items[0].grams) / 100)).toBe(37);
     const per = recipePerServing(lic, foods);
     expect(per.protein).toBeGreaterThan(48);
     expect(per.protein).toBeLessThan(52);
-    expect(per.kcal).toBeGreaterThan(450);
-    expect(per.kcal).toBeLessThan(500);
+    expect(per.carbs).toBeLessThan(42); // la proteína no aporta carbohidratos
+  });
+
+  it('de la versión 2 a la 3: el licuado se corrige si no lo editaste, y se respeta si lo editaste', async () => {
+    const SQL = await initSqlJs();
+    const lic = SEED_RECIPES.find((r) => r.id === 'rec_seed_licuado_avena_leche')!;
+    for (const edited of [false, true]) {
+      const db = new LocalDB(SQL, null, () => {});
+      db.upsert('settings', { key: 'seed_recipes_version', value: 2 });
+      const old = edited ? [{ foodId: 'proteina_whey', grams: 30 }] : lic.previousItems!;
+      db.upsert('recipes', { id: lic.id, name: 'Licuado', servings: 1, items: old, notes: 'x', created_at: 'x' });
+      syncSeedFoods(db);
+      syncSeedRecipes(db);
+      expect(db.get('foods', 'xgear_zero_carbs')).toBeTruthy();
+      const items = (db.get('recipes', lic.id) as { items: { foodId: string }[] }).items;
+      expect(items[0].foodId).toBe(edited ? 'proteina_whey' : 'xgear_zero_carbs');
+    }
   });
 });

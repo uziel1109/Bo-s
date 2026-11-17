@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import initSqlJs from 'sql.js';
 import { seedFoods, USDA_FDC_IDS, LEGACY_SEED_SOURCE } from '../src/shared/nutrition/foodsSeed';
+import { BRAND_FOODS } from '../src/shared/nutrition/brandFoods';
 import { syncSeedFoods } from '../src/shared/nutrition/seedSync';
 import { LocalDB } from '../src/shared/db/localdb';
 import { buildShoppingList, COOKED_TO_RAW, shoppingListText } from '../src/shared/nutrition/shopping';
@@ -36,7 +37,7 @@ describe('Alimentos verificados contra USDA FoodData Central', () => {
     ]);
     const r = syncSeedFoods(db);
     expect(r.updated).toBe(1);
-    expect(r.inserted).toBe(seedFoods().length - 2);
+    expect(r.inserted).toBe(seedFoods().length - 2 + BRAND_FOODS.length); // más los productos de marca
     const atun = db.get('foods', 'atun_agua')!;
     expect(atun.kcal).toBe(usda.atun_agua.kcal);
     expect(atun.price_per_kg).toBe(180); // conserva el precio del usuario
