@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Barcode, Camera, Copy, Pencil, Plus, RefreshCw, Save, Search, Star, Trash2, Utensils } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Ring, Card, Claims, Field, fmt, MacroBar, Modal, NumInput, Seg, Stat, Tabs, Empty } from '../components/ui';
+import { Alert, Ring, Card, Claims, Field, fmt, Modal, NumInput, Seg, Stat, Tabs, Empty } from '../components/ui';
 import { IntakeArea } from '../components/charts';
 import type { Food, FoodCategory, FoodLog, Macros, MealSlot } from '@shared/types';
 import { MEAL_LABEL, mealSlots, distributeMacros } from '@shared/nutrition/targets';
@@ -601,12 +601,14 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
       </div>
       <p className="tiny muted" style={{ marginTop: -6 }}>Para quitar un alimento, deslízalo hacia la izquierda; hasta el fondo se elimina directo.</p>
       <Card title={`Día ${d.index + 1}: totales vs objetivo`}>
-        <div className="col" style={{ gap: 10 }}>
-          <MacroBar label="Calorías" color="var(--s1)" value={d.totals.kcal} target={mealPlan.targets.kcal} unit="kcal" />
-          <MacroBar label="Proteína" color="var(--protein)" value={d.totals.protein} target={mealPlan.targets.protein} />
-          <MacroBar label="Carbos" color="var(--carbs)" value={d.totals.carbs} target={mealPlan.targets.carbs} />
-          <MacroBar label="Grasas" color="var(--fat)" value={d.totals.fat} target={mealPlan.targets.fat} />
-          <MacroBar label="Fibra" color="var(--fiber)" value={d.totals.fiber} target={mealPlan.targets.fiber} overOk />
+        <div className="macro-rings" data-testid="plan-rings">
+          <MacroRing label="Calorías" value={Math.round(d.totals.kcal)} target={mealPlan.targets.kcal} unit="kcal" color="var(--m-orange)" big />
+          <MacroRing label="Proteína" value={Math.round(d.totals.protein)} target={mealPlan.targets.protein} unit="g" color="var(--m-pink)" />
+          <MacroRing label="Carbos" value={Math.round(d.totals.carbs)} target={mealPlan.targets.carbs} unit="g" color="var(--m-amber)" />
+          <MacroRing label="Grasas" value={Math.round(d.totals.fat)} target={mealPlan.targets.fat} unit="g" color="var(--m-violet)" />
+          <span className="tech">
+            <MacroRing label="Fibra" value={Math.round(d.totals.fiber)} target={mealPlan.targets.fiber} unit="g" color="var(--m-green)" />
+          </span>
         </div>
       </Card>
       <div className="grid g2">
