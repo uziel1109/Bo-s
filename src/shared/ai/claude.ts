@@ -1,5 +1,6 @@
 // Llamadas a Claude (Anthropic) compartidas por escritorio y web. Reciben un cliente ya configurado.
 import type Anthropic from '@anthropic-ai/sdk';
+import { foodAnalysisPrompt } from './prompts';
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
@@ -54,15 +55,7 @@ export async function analyzeFoodPhoto(
     { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
     {
       type: 'text',
-      text: `Analiza la foto de este plato de comida.
-1. Identifica el platillo (nombre común en México) y cada elemento visible por separado (proteína, guarnición, tortillas, salsa, aceite visible, bebida…).
-2. Estima los gramos de cada elemento tal como se ve servido (cocinado). Usa referencias visuales (tamaño del plato ~26 cm, cubiertos, tortilla ~14 cm). Si dudas, elige un valor intermedio y baja la confianza.
-3. Si el elemento corresponde a un alimento de esta lista, pon su "foodId" exacto (elige la forma de preparación correcta, p. ej. cocido vs crudo); si no corresponde a ninguno, foodId = null y da "per100g" aproximado (kcal, protein, carbs, fat, fiber por 100 g) basado en valores de referencia típicos.
-Lista (id: nombre):
-${foods.map((f) => `${f.id}: ${f.name}`).join('\n')}
-${planHint ? `\nPlan de esta comida (solo como contexto, NO asumas que el plato coincide): ${planHint}` : ''}
-Responde SOLO con JSON válido, sin texto adicional:
-{"dish":"nombre del platillo","items":[{"name":"...","grams":120,"foodId":"id"|null,"per100g":{"kcal":0,"protein":0,"carbs":0,"fat":0,"fiber":0}|null,"confidence":"alta"|"media"|"baja"}],"note":"advertencias breves (aceite oculto, salsas, porción no visible)"}`,
+      text: foodAnalysisPrompt(foods, { planHint }),
     },
   ]);
 }

@@ -55,3 +55,52 @@ describe('Análisis de foto de comida', () => {
     expect(c.extra).toContain('Arroz blanco');
   });
 });
+
+import { gramsFromQuantity, parseFoodTable, parsePastedAnswer } from '../src/shared/nutrition/photoAnalysis';
+import { foodAnalysisPrompt } from '../src/shared/ai/prompts';
+
+describe('Respuestas pegadas (modo gratis)', () => {
+  const table = `Cantidad aprox.	kcal	Proteína	Carbos	Grasa
+Arroz blanco cocido	~250 g (1½ taza)	325	7 g	70 g	1 g
+Pollo + aceite	~130 g cocido	260	32 g	0 g	13 g
+Papa y zanahoria	~110 g	70	2 g	16 g	0 g
+Salsa de V8 + verduras	~150 ml	40	1 g	8 g	0 g
+Sriracha	~2 cdas	30	1 g	6 g	0 g
+Total		~725	~43 g	~100 g	~14 g`;
+
+  it('cantidades escritas a gramos', () => {
+    expect(gramsFromQuantity('~250 g (1½ taza)')).toBe(250);
+    expect(gramsFromQuantity('~150 ml')).toBe(150);
+    expect(gramsFromQuantity('~2 cdas')).toBe(30);
+    expect(gramsFromQuantity('1½ taza')).toBe(360);
+    expect(gramsFromQuantity('1 cdita')).toBe(5);
+    expect(gramsFromQuantity('una pieza')).toBeNull();
+  });
+
+  it('lee la tabla, ignora encabezado y total, y conserva los macros', () => {
+    const r = parseFoodTable(table)!;
+    expect(r.items.map((i) => i.name)).toEqual(['Arroz blanco cocido', 'Pollo + aceite', 'Papa y zanahoria', 'Salsa de V8 + verduras', 'Sriracha']);
+    expect(r.items.map((i) => i.grams)).toEqual([250, 130, 110, 150, 30]);
+    const tot = r.items.reduce((a, i) => a + ((i.per100!.kcal * i.grams) / 100), 0);
+    expect(Math.abs(tot - 725)).toBeLessThan(5);
+    const p = r.items.reduce((a, i) => a + ((i.per100!.protein * i.grams) / 100), 0);
+    expect(Math.abs(p - 43)).toBeLessThan(1);
+  });
+
+  it('prefiere el JSON si la respuesta lo trae, y tabla en markdown también funciona', () => {
+    const json = 'Aquí está:\n```json\n{"dish":"Tacos","items":[{"name":"Tortilla","grams":90,"foodId":"tortilla_maiz","per100g":null,"confidence":"alta"}],"note":""}\n```';
+    const r = parsePastedAnswer(json, [{ id: 'tortilla_maiz', name: 'Tortilla de maíz', category: 'cereal', kcal: 218, protein: 5.7, carbs: 44.6, fat: 2.9, fiber: 6.3, source: 'x', verified: 1, custom: 0 }]);
+    expect(r.dish).toBe('Tacos');
+    expect(r.items[0].foodId).toBe('tortilla_maiz');
+    const md = '| Alimento | Cantidad | kcal | P | C | G |\n|---|---|---|---|---|---|\n| Huevo | 100 g | 143 | 12.6 | 0.7 | 9.5 |';
+    expect(parsePastedAnswer(md, []).items[0]).toMatchObject({ name: 'Huevo', grams: 100 });
+    expect(() => parsePastedAnswer('hola', [])).toThrow(/formato/);
+  });
+
+  it('las instrucciones del modo gratis incluyen la lista de alimentos y piden JSON', () => {
+    const t = foodAnalysisPrompt([{ id: 'avena', name: 'Avena' }], { manual: true, description: 'avena con leche' });
+    expect(t).toContain('avena: Avena');
+    expect(t).toContain('avena con leche');
+    expect(t).toMatch(/JSON/);
+  });
+});

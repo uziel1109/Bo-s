@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Brain, Check, KeyRound, MessageSquare, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Brain, Check, Copy, KeyRound, MessageSquare, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { coachPrompt } from '@shared/ai/prompts';
+import { copyText } from '../lib/clipboard';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
 import { Alert, Card, Claims, DetailsHint, Empty, Field, fmt, Stat, Tabs } from '../components/ui';
@@ -94,6 +96,20 @@ function Assistant() {
           </button>
         </div>
         <p className="tiny muted mt8">{llm ? 'IA externa activada: las preguntas libres se envían junto con el resumen de datos que puedes ver en Configuración de IA.' : 'Modo local: respuestas calculadas en tu equipo, sin conexión.'}</p>
+        <div className="claude-copy mt12" data-testid="claude-copy">
+          <div className="small" style={{ fontWeight: 650 }}>Pregúntale a tu app de Claude (gratis)</div>
+          <p className="tiny muted">Copia tus datos (y tu pregunta, si la escribiste arriba) y pégalos en la app de Claude. Usa tu suscripción, sin gastar tokens de la API.</p>
+          <button
+            className="btn sm"
+            onClick={async () => {
+              const ok = await copyText(coachPrompt(aiContextSummary(data, st), free.trim() || undefined));
+              toast(ok ? 'Copiado. Pégalo en la app de Claude.' : 'No se pudo copiar automáticamente.', ok ? 'ok' : 'error');
+            }}
+            data-testid="claude-copy-btn"
+          >
+            <Copy size={14} /> Copiar mis datos para Claude
+          </button>
+        </div>
       </Card>
       <div className="col" style={{ gap: 16 }}>
         <Card title={q ? QUESTIONS.find((x) => x.key === q)?.question : 'Respuesta'} icon={<Sparkles />} hint="Asistente local">

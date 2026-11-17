@@ -297,6 +297,29 @@ try {
   }
   await nav('dashboard');
 
+  console.log('▶ IA gratis: copiar instrucciones y pegar la respuesta de la app de Claude');
+  await nav('nutricion');
+  await page.click('.tabs button:has-text("Registro diario")');
+  await page.click('[data-testid=photo-comida]');
+  await page.waitForSelector('[data-testid=manual-ai]');
+  await page.fill('[data-testid=manual-desc]', 'arroz con pollo');
+  await page.click('[data-testid=manual-copy]');
+  await page.waitForFunction(() => /Copiado|copiar/.test(document.querySelector('[data-testid=manual-ai]')?.textContent ?? ''));
+  check(true, 'Instrucciones listas para pegar en la app de Claude');
+  const tabla = ['Cantidad aprox.\tkcal\tProteína\tCarbos\tGrasa', 'Arroz blanco cocido\t~250 g (1½ taza)\t325\t7 g\t70 g\t1 g', 'Pollo + aceite\t~130 g cocido\t260\t32 g\t0 g\t13 g', 'Papa y zanahoria\t~110 g\t70\t2 g\t16 g\t0 g', 'Salsa de V8 + verduras\t~150 ml\t40\t1 g\t8 g\t0 g', 'Sriracha\t~2 cdas\t30\t1 g\t6 g\t0 g', 'Total\t\t~725\t~43 g\t~100 g\t~14 g'].join('\n');
+  await page.fill('[data-testid=paste-answer]', tabla);
+  await page.click('[data-testid=paste-read]');
+  await page.waitForSelector('[data-testid=photo-kcal]');
+  const kcalPasted = Number((await page.textContent('[data-testid=photo-kcal]')).replace(/\D/g, ''));
+  check(Math.abs(kcalPasted - 725) <= 3, `Tabla pegada leída: ${kcalPasted} kcal (≈ 725)`);
+  await page.click('[data-testid=photo-save]');
+  await page.waitForSelector('[data-testid=manual-ai]', { state: 'detached' });
+  check(true, 'Comida registrada desde la respuesta pegada');
+  await nav('ia');
+  await page.waitForSelector('[data-testid=claude-copy-btn]');
+  check(true, 'Botón para copiar tus datos a la app de Claude');
+  await nav('dashboard');
+
   console.log('▶ Hipertrofia: mesociclo, retroalimentación y RIR');
   await nav('entrenamiento');
   await page.click('.tabs button:has-text("Mesociclo")');
@@ -362,9 +385,10 @@ try {
   check(true, 'Volver a entrenar reactiva la rutina');
 
   console.log('▶ Persistencia al recargar');
+  const kcalToday = (await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '');
   await page.reload();
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
-  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'Los datos persisten tras recargar (IndexedDB)');
+  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === kcalToday, `Los datos persisten tras recargar (IndexedDB): ${kcalToday} kcal`);
 
   console.log('▶ Respaldo y restauración');
   await nav('config');
@@ -384,7 +408,7 @@ try {
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-testid=onb-restore]')]);
   await chooser.setFiles(backupPath);
   await page.waitForSelector('[data-testid=dash-kcal]', { timeout: 20000 });
-  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'Respaldo restaurado correctamente');
+  check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === kcalToday, 'Respaldo restaurado correctamente');
 
   const portrait = await browser.newContext({ ...pw.devices['iPad Pro 11'] });
   const pp = await portrait.newPage();

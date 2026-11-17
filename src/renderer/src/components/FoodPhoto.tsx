@@ -1,14 +1,16 @@
 // Registro de comida por fotografía con IA: foto → platillo y elementos → macros con alimentos verificados
 // → comparación con el plan → agregar (o reemplazar) en el registro diario.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Check, ImagePlus, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { Camera, Check, ClipboardPaste, Copy, ImagePlus, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import type { Food, MealSlot } from '@shared/types';
-import { compareWithPlan, itemMacros, parsePhotoAnalysis, type DetectedItem, type PhotoAnalysis } from '@shared/nutrition/photoAnalysis';
+import { compareWithPlan, itemMacros, parsePastedAnswer, parsePhotoAnalysis, type DetectedItem, type PhotoAnalysis } from '@shared/nutrition/photoAnalysis';
 import { sumMacros } from '@shared/nutrition/foods';
 import { MEAL_LABEL } from '@shared/nutrition/targets';
 import { daysBetween, uid } from '@shared/utils';
 import type { MealPlan } from '@shared/nutrition/mealPlanner';
-import { Alert, fmt, Modal, NumInput } from './ui';
+import { Alert, fmt, Modal, NumInput, Seg } from './ui';
+import { foodAnalysisPrompt } from '@shared/ai/prompts';
+import { copyText } from '../lib/clipboard';
 import { api } from '../api';
 import { fileToJpegBase64 } from '../lib/image';
 import { useApp } from '../store';
@@ -33,11 +35,36 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
   const [result, setResult] = useState<PhotoAnalysis | null>(null);
   const [items, setItems] = useState<DetectedItem[]>([]);
   const [replace, setReplace] = useState(true);
+  const [mode, setMode] = useState<'api' | 'manual' | null>(null);
+  const [desc, setDesc] = useState('');
+  const [pasted, setPasted] = useState('');
+  const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const camRef = useRef<HTMLInputElement>(null);
   const libRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    api.aiConfig().then(setCfg).catch(() => setCfg({ enabled: false, hasKey: false }));
+    api
+      .aiConfig()
+      .then((c) => {
+        setCfg(c);
+        setMode(c.enabled && c.hasKey ? 'api' : 'manual');
+      })
+      .catch(() => {
+        setCfg({ enabled: false, hasKey: false });
+        setMode('manual');
+      });
   }, []);
+  const apiReady = !!cfg?.enabled && !!cfg?.hasKey;
+  const manualPrompt = () => foodAnalysisPrompt(foods.map((f) => ({ id: f.id, name: f.name })), { manual: true, description: desc.trim() || undefined, planHint: planned ? planned.items.map((i) => `${i.name} ${i.grams} g`).join(', ') : undefined });
+  const copyPrompt = async () => setCopied((await copyText(manualPrompt())) ? 'ok' : 'fail');
+  const readAnswer = () => {
+    try {
+      const r = parsePastedAnswer(pasted, foods);
+      setResult(r);
+      setItems(r.items);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error');
+    }
+  };
 
   const planned = plannedMeal(mealPlan, slot, date);
   const existing = data.foodLogs.filter((l) => l.date === date && l.meal === slot);
@@ -94,24 +121,8 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
   const missingValues = items.some((i) => !itemMacros(i, foods));
 
   return (
-    <Modal title="Foto de tu comida" onClose={onClose} wide>
-      {cfg && (!cfg.enabled || !cfg.hasKey) ? (
-        <div className="col" style={{ gap: 12 }}>
-          <Alert kind="info">
-            El análisis de fotos usa la integración opcional de IA (Claude), que está desactivada. Actívala con tu clave en <b>Inteligencia artificial → Configuración de IA</b>. La foto solo se envía cuando tocas “Analizar”.
-          </Alert>
-          <button
-            className="btn primary"
-            style={{ alignSelf: 'flex-start' }}
-            onClick={() => {
-              onClose();
-              navigate('ia');
-            }}
-          >
-            Configurar IA
-          </button>
-        </div>
-      ) : (
+    <Modal title="Analizar tu comida con IA" onClose={onClose} wide>
+      {!mode ? null : (
         <div className="col" style={{ gap: 16 }}>
           <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(e) => onFile(e.target.files?.[0])} data-testid="photo-camera-input" />
           <input ref={libRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onFile(e.target.files?.[0])} data-testid="photo-library-input" />
@@ -126,17 +137,90 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
                 ))}
               </select>
             </div>
-            <div className="row">
-              <button className="btn primary" onClick={() => camRef.current?.click()}>
-                <Camera /> Tomar foto
+            {mode === 'api' && (
+              <div className="row">
+                <button className="btn primary" onClick={() => camRef.current?.click()}>
+                  <Camera /> Tomar foto
+                </button>
+                <button className="btn" onClick={() => libRef.current?.click()}>
+                  <ImagePlus /> Elegir de la galería
+                </button>
+              </div>
+            )}
+          </div>
+          {!result && (
+            <Seg
+              value={mode}
+              onChange={(v) => setMode(v)}
+              options={[
+                { value: 'manual', label: 'Con mi app de Claude (gratis)' },
+                { value: 'api', label: apiReady ? 'Análisis directo (clave de API)' : 'Análisis directo (requiere clave)' },
+              ]}
+            />
+          )}
+          {mode === 'api' && !apiReady && !result && (
+            <Alert kind="info">
+              El análisis directo usa una clave de API de Anthropic (se cobra aparte de tu suscripción). Configúrala en <b>Inteligencia artificial → Configuración de IA</b>, o usa la opción gratis con tu app de Claude.{' '}
+              <button
+                className="btn sm"
+                onClick={() => {
+                  onClose();
+                  navigate('ia');
+                }}
+              >
+                Configurar
               </button>
-              <button className="btn" onClick={() => libRef.current?.click()}>
-                <ImagePlus /> Elegir de la galería
+            </Alert>
+          )}
+          {mode === 'manual' && !result && (
+            <div className="col manual-ai" style={{ gap: 12 }} data-testid="manual-ai">
+              <ol className="small rec-list">
+                <li>
+                  Escribe qué comiste (opcional si mandas foto) y toca <b>Copiar instrucciones</b>.
+                </li>
+                <li>Abre la app de Claude, pega el mensaje y adjunta la foto de tu plato (o solo envíalo con tu descripción).</li>
+                <li>Copia la respuesta completa de Claude, vuelve aquí y pégala abajo.</li>
+              </ol>
+              <textarea className="input" rows={2} placeholder="Ej.: arroz blanco ~250 g, pollo con aceite ~130 g, papa y zanahoria…" value={desc} onChange={(e) => setDesc(e.target.value)} data-testid="manual-desc" />
+              <div className="row">
+                <button className="btn primary" onClick={copyPrompt} data-testid="manual-copy">
+                  <Copy size={15} /> {copied === 'ok' ? 'Copiado ✓' : 'Copiar instrucciones'}
+                </button>
+                <span className="tiny muted">Usa tu suscripción de Claude; BODY OS no gasta tokens de la API.</span>
+              </div>
+              {copied === 'fail' && (
+                <div className="col" style={{ gap: 6 }}>
+                  <span className="tiny muted">No se pudo copiar automáticamente: selecciona y copia este texto.</span>
+                  <textarea className="input mono" rows={5} readOnly value={manualPrompt()} onFocus={(e) => e.currentTarget.select()} />
+                </div>
+              )}
+              <textarea className="input" rows={6} placeholder="Pega aquí la respuesta de Claude (también acepta una tabla con alimento, cantidad, kcal, proteína, carbos y grasa)" value={pasted} onChange={(e) => setPasted(e.target.value)} data-testid="paste-answer" />
+              <button className="btn" style={{ alignSelf: 'flex-start' }} disabled={!pasted.trim()} onClick={readAnswer} data-testid="paste-read">
+                <ClipboardPaste size={15} /> Leer respuesta
               </button>
             </div>
-          </div>
+          )}
+          {result && !preview && (
+            <div className="row" style={{ gap: 24, alignItems: 'flex-end' }}>
+              <div>
+                <div className="tiny muted">Platillo</div>
+                <div style={{ fontSize: 22, fontWeight: 720 }} data-testid="photo-dish">
+                  {result.dish}
+                </div>
+              </div>
+              <span>
+                <b className="mono" style={{ fontSize: 20 }} data-testid="photo-kcal">
+                  {fmt(totals.kcal)}
+                </b>{' '}
+                <span className="muted small">kcal</span>
+              </span>
+              <span className="small">
+                P <b>{fmt(totals.protein)}</b> · C <b>{fmt(totals.carbs)}</b> · G <b>{fmt(totals.fat)}</b> g
+              </span>
+            </div>
+          )}
 
-          {preview && (
+          {preview && mode === 'api' && (
             <div className="photo-analyze">
               <img src={preview} alt="Tu plato" />
               <div className="col" style={{ gap: 10 }}>

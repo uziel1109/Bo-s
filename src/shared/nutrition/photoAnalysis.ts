@@ -90,3 +90,85 @@ export function compareWithPlan(items: DetectedItem[], plan: { foodId: string; n
   const extra = items.filter((_, k) => !used.has(k)).map((i) => i.name);
   return { matched, missing, extra };
 }
+
+// ───────────────────────── Respuestas pegadas (modo gratis con la app de Claude)
+
+const FRACTIONS: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3 };
+
+/** "1½" → 1.5, "2,5" → 2.5, "~250" → 250. */
+function parseAmount(s: string): number | null {
+  const m = s.match(/(\d+(?:[.,]\d+)?)?\s*([½¼¾⅓⅔])?/);
+  if (!m || (!m[1] && !m[2])) return null;
+  return (m[1] ? Number(m[1].replace(',', '.')) : 0) + (m[2] ? FRACTIONS[m[2]] : 0);
+}
+
+/** Gramos a partir de una cantidad escrita: "~250 g (1½ taza)", "150 ml", "2 cdas", "1 taza". */
+export function gramsFromQuantity(q: string): number | null {
+  const t = q.toLowerCase();
+  const g = t.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|grs|gramos|ml)\b/);
+  if (g) return Number(g[1].replace(',', '.'));
+  const kg = t.match(/(\d+(?:[.,]\d+)?)\s*(kg|l|litros?)\b/);
+  if (kg) return Number(kg[1].replace(',', '.')) * 1000;
+  const unit = t.match(/([\d.,½¼¾⅓⅔\s]+)\s*(cditas?|cucharaditas?|cdas?|cucharadas?|tazas?|vasos?)/);
+  if (unit) {
+    const n = parseAmount(unit[1].trim());
+    if (n == null) return null;
+    const u = unit[2];
+    const per = /cdita|cucharadita/.test(u) ? 5 : /cda|cucharada/.test(u) ? 15 : /vaso/.test(u) ? 250 : 240;
+    return Math.round(n * per);
+  }
+  return null;
+}
+
+/**
+ * Lee una tabla pegada (columnas: alimento, cantidad, kcal, proteína, carbohidratos, grasa), como las que
+ * escribe una IA en el chat. Ignora encabezados y la fila de total. Los macros se toman tal cual de la tabla.
+ */
+export function parseFoodTable(text: string): PhotoAnalysis | null {
+  const items: DetectedItem[] = [];
+  const warnings: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\s*\|?\s*:?-{2,}/.test(line)) continue; // separador de tabla markdown
+    const cells = line
+      .split(/\t|\s{2,}|\|/)
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (cells.length < 5) continue;
+    const name = cells[0].replace(/\*\*/g, '').trim();
+    if (!name || /^(total|totales|suma)\b/i.test(name) || !/\d/.test(cells.slice(1).join(' '))) continue;
+    const nums = cells.slice(-4).map((c) => Number((c.match(/-?\d+(?:[.,]\d+)?/)?.[0] ?? 'NaN').replace(',', '.')));
+    if (nums.some((n) => !Number.isFinite(n) || n < 0)) continue;
+    const [kcal, protein, carbs, fat] = nums;
+    const qty = cells.length >= 6 ? cells[1] : '';
+    let grams = gramsFromQuantity(qty);
+    let note = false;
+    if (!grams || grams <= 0) {
+      grams = 100;
+      note = true;
+    }
+    const k = 100 / grams;
+    const per100 = { kcal: Math.round(kcal * k), protein: Math.round(protein * k * 10) / 10, carbs: Math.round(carbs * k * 10) / 10, fat: Math.round(fat * k * 10) / 10, fiber: 0 };
+    if (per100.kcal > 900 || per100.protein + per100.carbs + per100.fat > 100.5) {
+      warnings.push(`"${name}": los valores no son coherentes con la cantidad; revísalo.`);
+      continue;
+    }
+    if (note) warnings.push(`"${name}": no se entendió la cantidad; se registra como 1 porción con los macros de la tabla.`);
+    items.push({ name, grams: Math.round(grams), foodId: null, per100, confidence: 'media', source: 'estimado_ia' });
+  }
+  if (!items.length) return null;
+  return { dish: 'Comida', items, note: 'Valores tomados de la tabla que pegaste.', warnings };
+}
+
+/** Respuesta pegada de la app de Claude: primero intenta el JSON; si no hay, una tabla. */
+export function parsePastedAnswer(text: string, foods: Food[]): PhotoAnalysis {
+  if (/\{[\s\S]*"items"[\s\S]*\}/.test(text)) {
+    try {
+      return parsePhotoAnalysis(text, foods);
+    } catch {
+      /* se intenta como tabla */
+    }
+  }
+  const t = parseFoodTable(text);
+  if (t) return t;
+  throw new Error('No se encontró el formato esperado. Copia la respuesta completa de Claude (el bloque de código) o una tabla con alimento, cantidad, kcal, proteína, carbohidratos y grasa.');
+}

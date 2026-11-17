@@ -2912,3 +2912,12 @@ details.supp-group[open] > summary::after {
   font-size: 14px;
   animation: fadein 0.2s ease both;
 }
+.claude-copy {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
