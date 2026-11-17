@@ -9,11 +9,14 @@ export interface SeedRecipe {
   servings: number;
   items: { foodId: string; grams: number }[];
   notes: string;
+  /** Versión en la que se agregó (las recetas nuevas se insertan al actualizar sin reponer las que borraste). */
+  since?: number;
 }
 
-export const SEED_RECIPES_VERSION = 1;
+export const SEED_RECIPES_VERSION = 2;
 
-const r = (id: string, name: string, servings: number, items: [string, number][], steps: string[]): SeedRecipe => ({
+const r = (id: string, name: string, servings: number, items: [string, number][], steps: string[], since = 1): SeedRecipe => ({
+  since,
   id: `rec_seed_${id}`,
   name,
   servings,
@@ -137,4 +140,9 @@ export const SEED_RECIPES: SeedRecipe[] = [
     'Sirve con arroz.',
   ]),
   r('yogur_fruta', 'Yogur griego con fresas, avena y almendra', 1, [['yogur_griego_0', 250], ['fresa', 150], ['avena', 30], ['miel', 10], ['almendra', 15]], ['Sirve el yogur con la fruta picada, la avena, la almendra y la miel.']),
+  // Versión 2
+  r('licuado_avena_leche', 'Licuado de proteína con avena y leche entera', 1, [['proteina_whey', 47], ['avena', 40], ['leche_entera', 258]], [
+    'Licúa 250 ml de leche entera con la avena y la proteína (la cantidad que da 37 g de proteína según tu etiqueta) y hielo al gusto.',
+    'La proteína se calcula con valores genéricos de suero de leche (78 g de proteína por 100 g): si tu marca es distinta, edita el alimento con su etiqueta y la receta se recalcula sola.',
+  ], 2),
 ];

@@ -35,7 +35,8 @@ export function syncSeedRecipes(db: LocalDB): number {
   const v = Number(cur?.value ?? 0);
   if (v >= SEED_RECIPES_VERSION) return 0;
   const now = new Date().toISOString();
-  const rows = SEED_RECIPES.filter((r) => !db.get('recipes', r.id)).map((r) => ({ ...r, created_at: now }));
+  // Solo las recetas agregadas después de la última versión instalada: las que borraste no reaparecen.
+  const rows = SEED_RECIPES.filter((r) => (r.since ?? 1) > v && !db.get('recipes', r.id)).map(({ since: _s, ...r }) => ({ ...r, created_at: now }));
   if (rows.length) db.bulkUpsert('recipes', rows);
   db.upsert('settings', { key: 'seed_recipes_version', value: SEED_RECIPES_VERSION });
   return rows.length;

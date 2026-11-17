@@ -115,3 +115,27 @@ describe('Saciedad', () => {
     expect(ins.claims[0]).toMatch(/Llevas 1/);
   });
 });
+
+describe('Recetas nuevas al actualizar', () => {
+  it('al pasar de la versión 1 solo se agrega lo nuevo; lo borrado no reaparece', async () => {
+    const SQL = await initSqlJs();
+    const db = new LocalDB(SQL, null, () => {});
+    // Simula una instalación en la versión 1 con una receta borrada por el usuario.
+    db.upsert('settings', { key: 'seed_recipes_version', value: 1 });
+    expect(syncSeedRecipes(db)).toBe(SEED_RECIPES.filter((r) => (r.since ?? 1) > 1).length);
+    expect(db.get('recipes', 'rec_seed_licuado_avena_leche')).toBeTruthy();
+    expect(db.get('recipes', 'rec_seed_tinga')).toBeNull();
+    expect(syncSeedRecipes(db)).toBe(0);
+  });
+
+  it('el licuado: 37 g de proteína de la proteína en polvo, ≈ 50 g en total', () => {
+    const lic = SEED_RECIPES.find((r) => r.id === 'rec_seed_licuado_avena_leche')!;
+    const whey = foods.find((f) => f.id === 'proteina_whey')!;
+    expect(Math.round((whey.protein * lic.items[0].grams) / 100)).toBe(37);
+    const per = recipePerServing(lic, foods);
+    expect(per.protein).toBeGreaterThan(48);
+    expect(per.protein).toBeLessThan(52);
+    expect(per.kcal).toBeGreaterThan(450);
+    expect(per.kcal).toBeLessThan(500);
+  });
+});
