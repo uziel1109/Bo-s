@@ -12,6 +12,7 @@ import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
 import { DayKindBadge, PhasesPanel, useDayTargets } from '../components/PhasesPanel';
+import { SwipeRow } from '../components/SwipeRow';
 import { IconTile } from '../components/visual';
 import { ChefHat } from 'lucide-react';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
@@ -540,6 +541,24 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
     await reload();
   };
 
+  // Quitar un alimento de una comida del plan (deslizando a la izquierda), con opción de deshacer.
+  const [undo, setUndo] = useState<{ plan: MealPlan & { id: string }; name: string } | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 7000);
+    return () => clearTimeout(t);
+  }, [undo]);
+  const removeItem = async (dIdx: number, mIdx: number, iIdx: number) => {
+    if (!mealPlan) return;
+    const before = structuredClone(mealPlan);
+    const day = mealPlan.days.find((x) => x.index === dIdx)!;
+    const meal = day.meals[mIdx];
+    const items = meal.items.filter((_, i) => i !== iIdx);
+    const newMeal = { ...meal, items, totals: sumMacros(items.map((x) => x.macros)) };
+    await savePlan({ ...mealPlan, days: mealPlan.days.map((x) => (x.index === dIdx ? replaceMeal(x, mIdx, newMeal) : x)) });
+    setUndo({ plan: before, name: meal.items[iIdx].name });
+  };
+
   const logMeal = async (dIdx: number, mIdx: number) => {
     const meal = mealPlan!.days[dIdx].meals[mIdx];
     await api.bulkUpsert('food_logs', meal.items.map((it) => ({ id: uid('f_'), date: today, meal: meal.slot, food_id: it.foodId, name: it.name, grams: it.grams, ...it.macros, created_at: new Date().toISOString() })));
@@ -580,6 +599,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           </button>
         </div>
       </div>
+      <p className="tiny muted" style={{ marginTop: -6 }}>Para quitar un alimento, deslízalo hacia la izquierda; hasta el fondo se elimina directo.</p>
       <Card title={`Día ${d.index + 1}: totales vs objetivo`}>
         <div className="col" style={{ gap: 10 }}>
           <MacroBar label="Calorías" color="var(--s1)" value={d.totals.kcal} target={mealPlan.targets.kcal} unit="kcal" />
@@ -615,7 +635,8 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           >
             <div className="food-rows">
               {m.items.map((it, ii) => (
-                <div key={ii} className="food-row">
+                <SwipeRow key={`${it.foodId}-${ii}-${it.grams}`} onDelete={() => removeItem(d.index, mi, ii)} testId="plan-swipe">
+                <div className="food-row">
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="food-name">{it.name}</div>
                     <div className="tiny muted">
@@ -631,6 +652,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
                     <RefreshCw size={14} />
                   </button>
                 </div>
+                </SwipeRow>
               ))}
             </div>
             <div className="tiny muted mt8 tech">
@@ -639,6 +661,21 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           </Card>
         ))}
       </div>
+      {undo && (
+        <div className="undo-bar" data-testid="undo-bar">
+          <span>Quitaste {undo.name.split(',')[0].toLowerCase()}.</span>
+          <button
+            className="btn sm"
+            onClick={async () => {
+              const p = undo.plan;
+              setUndo(null);
+              await savePlan(p);
+            }}
+          >
+            Deshacer
+          </button>
+        </div>
+      )}
       {recipeFor && (
         <RecipePicker
           meal={mealPlan.days[recipeFor.d].meals[recipeFor.m]}
