@@ -31,6 +31,8 @@ Todo puede modificarse después en **Configuración → Perfil**.
 
 Una vez por semana (lunes): **mide tu cintura**. Cada 2–4 semanas: **fotos de progreso**.
 
+**¿Olvidaste registrar algo?** En el Dashboard, debajo de la tarjeta principal, toca *Registrar un día anterior*: eliges ayer, anteayer u otra fecha y desde ahí registras comida, peso y medidas, agua, pasos, sueño, suplementos, pesas o cardio de ese día. También puedes cambiar el día en el registro de comida (botón *Ayer* o las flechas), en Hidratación, en la sesión de entrenamiento (*Fecha*), en Cardio y en las ventanas de peso y de recuperación.
+
 ## 3. Cómo leer el Dashboard
 
 - **Resumen corporal:** peso, % de grasa (con su método y error), masa magra, cintura y avance hacia tu objetivo.

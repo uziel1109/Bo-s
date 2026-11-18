@@ -10,6 +10,7 @@ import type { CardioLog, CardioModality } from '@shared/types';
 import { addDays, dateRange, formatDateShort, uid } from '@shared/utils';
 import { api } from '../api';
 import { withBonus } from '../store';
+import { takePendingDate } from '../lib/pendingDate';
 
 export function Cardio() {
   const { data, state: st, profile, today, reload, toast, settings } = useApp();
@@ -18,7 +19,7 @@ export function Cardio() {
   const steps = withBonus(stepsTarget(data.stepsLogs, today), settings.steps_bonus);
   const stepsToday = data.stepsLogs.find((s) => s.date === today)?.steps ?? 0;
   const week = weeklyCardioSummary(data.cardioLogs, today);
-  const [f, setF] = useState<Partial<CardioLog>>({ date: today, modality: 'caminata', minutes: 30, intensity: 'baja' });
+  const [f, setF] = useState<Partial<CardioLog>>(() => ({ date: takePendingDate('cardio') ?? today, modality: 'caminata', minutes: 30, intensity: 'baja' }));
   const betaBlocker = /metoprolol|propranolol|atenolol|bisoprolol|carvedilol|nebivolol/i.test(profile.medications);
   const last14 = dateRange(addDays(today, -13), today).map((d) => ({ date: d, steps: data.stepsLogs.find((s) => s.date === d)?.steps ?? 0 }));
   const est = f.modality && f.intensity && f.minutes ? estimateCardioKcal(f.modality, f.intensity, f.minutes, st.currentWeight) : null;

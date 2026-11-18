@@ -5,6 +5,7 @@ import { useApp } from '../store';
 import { Alert, Card, Chips, Claims, DetailsHint, Empty, Field, fmt, Modal, NumInput, Seg, Stat, Tabs } from '../components/ui';
 import { GymMode } from '../components/GymMode';
 import { NoTrainingBanner, NoTrainingButton } from '../components/NoTraining';
+import { takePendingDate } from '../lib/pendingDate';
 import { MesocycleView, MuscleFeedbackCard, MuscleProgressPanel, StretchBadge, TechniqueToggle, useMeso } from '../components/Hypertrophy';
 import { rirForWeek, techniqueFor } from '@shared/training/hypertrophy';
 import { MobilityCard, useMobility } from '../components/Mobility';
@@ -18,7 +19,7 @@ import { generateRoutine, weeklySetTarget, type Routine, type RoutineDay } from 
 import { platesFor, warmupSets } from '@shared/training/warmup';
 import { bestE1rm, deloadAdvice, exerciseHistory, muscleWeekStats, progressionAdvice, sessionVolume, type ProgressionAdvice } from '@shared/training/progression';
 import type { Equipment, ExerciseLog, Muscle, SetLog, WorkoutSession } from '@shared/types';
-import { DAY_NAMES, formatDateShort, round, uid } from '@shared/utils';
+import { addDays, DAY_NAMES, formatDateShort, round, uid } from '@shared/utils';
 import { api } from '../api';
 
 /** Descanso legible: 90 → "1:30 min", 120 → "2 min", 45 → "45 s". */
@@ -95,9 +96,12 @@ function SessionLogger() {
   const { data, today, reload, toast, profile, pausedRoutine } = useApp();
   const routine = data.routine;
   const dow = new Date(today + 'T12:00:00').getDay();
-  const existing = data.sessions.find((s) => s.date === today && !s.completed) ?? null;
+  // Sesión sin terminar (de hoy o de los últimos días, si se registraba un día anterior).
+  const existing = [...data.sessions].filter((s) => !s.completed && s.date >= addDays(today, -7)).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
   const doneToday = data.sessions.filter((s) => s.date === today && s.completed);
-  const defaultDay = routine?.days.find((d) => d.weekday === dow) ?? null;
+  const [sessionDate, setSessionDate] = useState(() => takePendingDate('entreno') ?? today);
+  const sdow = new Date(sessionDate + 'T12:00:00').getDay();
+  const defaultDay = routine?.days.find((d) => d.weekday === sdow) ?? null;
   const [dayKey, setDayKey] = useState<string | null>(existing?.day_key ?? defaultDay?.key ?? routine?.days[0]?.key ?? null);
   const [session, setSession] = useState<WorkoutSession | null>(existing);
   const [rest, setRest] = useState<{ until: number; total: number } | null>(null);
@@ -139,7 +143,7 @@ function SessionLogger() {
     unlockAudio();
     startRef.current = Date.now();
     setSessionDay(day);
-    setSession({ id: uid('s_'), date: today, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted && !meso.active), completed: 0, notes: place !== 'gimnasio' ? `Entreno en: ${place === 'personalizado' ? 'equipo personalizado' : LOCATIONS[place].label}` : null });
+    setSession({ id: uid('s_'), date: sessionDate, routine_id: routine.id ?? null, day_key: day.key, day_name: day.name, exercises: buildLogs(day, data.sessions, !!deloadAccepted && !meso.active), completed: 0, notes: place !== 'gimnasio' ? `Entreno en: ${place === 'personalizado' ? 'equipo personalizado' : LOCATIONS[place].label}` : null });
   };
 
   const persist = async (s: WorkoutSession) => {
@@ -197,7 +201,23 @@ function SessionLogger() {
               <Play /> Comenzar
             </button>
           </div>
-          {!defaultDay && <p className="small muted mt8">Hoy no está programado un entrenamiento de fuerza; puedes adelantar o recuperar una sesión.</p>}
+          <div className="row mt12" style={{ gap: 8 }}>
+            <span className="small muted">Fecha:</span>
+            <Seg
+              value={sessionDate === today ? 'hoy' : sessionDate === addDays(today, -1) ? 'ayer' : 'otro'}
+              onChange={(v) => {
+                if (v === 'otro') return;
+                const d = v === 'hoy' ? today : addDays(today, -1);
+                setSessionDate(d);
+                const rd = routine.days.find((x) => x.weekday === new Date(d + 'T12:00:00').getDay());
+                if (rd) setDayKey(rd.key);
+              }}
+              options={[{ value: 'hoy', label: 'Hoy' }, { value: 'ayer', label: 'Ayer' }, { value: 'otro', label: 'Otra fecha' }]}
+            />
+            <input type="date" className="input" style={{ width: 170 }} value={sessionDate} max={today} onChange={(e) => e.target.value && setSessionDate(e.target.value)} data-testid="session-date" />
+          </div>
+          {sessionDate !== today && <p className="small mt8">Registrarás una sesión del <b>{formatDateShort(sessionDate)}</b>. Anota los pesos y repeticiones que hiciste ese día.</p>}
+          {!defaultDay && sessionDate === today && <p className="small muted mt8">Hoy no está programado un entrenamiento de fuerza; puedes adelantar o recuperar una sesión.</p>}
           <div className="mt16">
             <div className="small" style={{ fontWeight: 650, marginBottom: 6 }}>
               <MapPin size={14} style={{ verticalAlign: -2 }} /> ¿Dónde entrenas hoy?

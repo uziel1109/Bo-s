@@ -17,6 +17,7 @@ import { etaWithBreaks, nearGoal } from '@shared/nutrition/phases';
 import { DayKindBadge } from '../components/PhasesPanel';
 import { ChallengesCard } from '../components/Challenges';
 import { NoTrainingBanner } from '../components/NoTraining';
+import { PastDayButton } from '../components/PastDay';
 import type { Muscle } from '@shared/types';
 import { navigate } from '../App';
 import { api } from '../api';
@@ -168,6 +169,10 @@ export function Dashboard() {
           </div>
         </div>
       </section>
+
+      <div className="mb16" style={{ marginTop: -6 }}>
+        <PastDayButton />
+      </div>
 
       {/* Métricas corporales */}
       <div className="grid g2 mb16">

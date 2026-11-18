@@ -1,10 +1,10 @@
 // Registros rápidos reutilizables (peso/medidas, pasos, recuperación).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { BodyLog, RecoveryLog } from '@shared/types';
 import { Field, Modal, NumInput } from './ui';
 import { api } from '../api';
 import { useApp } from '../store';
-import { uid } from '@shared/utils';
+import { formatDateShort, uid } from '@shared/utils';
 
 const MEASURES: { key: keyof BodyLog; label: string }[] = [
   { key: 'waist', label: 'Cintura' },
@@ -102,9 +102,10 @@ export function BodyLogModal({ onClose, date: initialDate }: { onClose: () => vo
   );
 }
 
-export function RecoveryModal({ onClose }: { onClose: () => void }) {
+export function RecoveryModal({ onClose, date: initialDate }: { onClose: () => void; date?: string }) {
   const { data, today, reload, toast } = useApp();
-  const [r, setR] = useState<Partial<RecoveryLog>>(data.recoveryLogs.find((x) => x.date === today) ?? { sleep_hours: null });
+  const [date, setDate] = useState(initialDate ?? today);
+  const [r, setR] = useState<Partial<RecoveryLog>>(data.recoveryLogs.find((x) => x.date === date) ?? { sleep_hours: null });
   const scale = (k: keyof RecoveryLog, label: string, low: string, high: string) => (
     <Field label={label} help={`1 = ${low} · 5 = ${high}`}>
       <div className="seg">
@@ -118,7 +119,7 @@ export function RecoveryModal({ onClose }: { onClose: () => void }) {
   );
   return (
     <Modal
-      title="Recuperación de hoy"
+      title={date === today ? 'Recuperación de hoy' : `Recuperación del ${formatDateShort(date)}`}
       onClose={onClose}
       footer={
         <>
@@ -128,7 +129,7 @@ export function RecoveryModal({ onClose }: { onClose: () => void }) {
           <button
             className="btn primary"
             onClick={async () => {
-              await api.upsert('recovery_logs', { ...r, date: today });
+              await api.upsert('recovery_logs', { ...r, date });
               await reload();
               toast('Recuperación registrada.');
               onClose();
@@ -140,6 +141,9 @@ export function RecoveryModal({ onClose }: { onClose: () => void }) {
       }
     >
       <div className="grid g2">
+        <Field label="Fecha" help="La noche que dormiste antes de ese día.">
+          <input type="date" className="input" value={date} max={today} onChange={(e) => { setDate(e.target.value); setR(data.recoveryLogs.find((x) => x.date === e.target.value) ?? { sleep_hours: null }); }} data-testid="recovery-date" />
+        </Field>
         <Field label="Horas de sueño">
           <NumInput value={r.sleep_hours} onChange={(v) => setR({ ...r, sleep_hours: v })} suffix="h" step={0.25} />
         </Field>
@@ -152,10 +156,12 @@ export function RecoveryModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function StepsInput() {
+export function StepsInput({ date: forDate }: { date?: string } = {}) {
   const { data, today, reload, toast } = useApp();
-  const cur = data.stepsLogs.find((s) => s.date === today)?.steps ?? null;
+  const date = forDate ?? today;
+  const cur = data.stepsLogs.find((s) => s.date === date)?.steps ?? null;
   const [v, setV] = useState<number | null>(cur);
+  useEffect(() => setV(cur), [date]);
   return (
     <div className="row nowrap">
       <NumInput value={v} onChange={setV} suffix="pasos" testId="steps-input" />
@@ -163,7 +169,7 @@ export function StepsInput() {
         className="btn"
         onClick={async () => {
           if (v == null || v < 0 || v > 100000) return toast('Valor de pasos inválido.', 'error');
-          await api.upsert('steps_logs', { date: today, steps: Math.round(v) });
+          await api.upsert('steps_logs', { date, steps: Math.round(v) });
           await reload();
           toast('Pasos guardados.');
         }}

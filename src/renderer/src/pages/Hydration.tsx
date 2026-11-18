@@ -2,32 +2,39 @@ import { useState } from 'react';
 import { Droplets, Plus, Trash2 } from 'lucide-react';
 import { Hero } from '../components/visual';
 import { useApp } from '../store';
-import { Alert, Card, Claims, fmt, NumInput, Ring, Stat } from '../components/ui';
+import { Alert, Card, Claims, fmt, NumInput, Ring, Seg, Stat } from '../components/ui';
 import { SimpleBars } from '../components/charts';
 import { hourlyDistribution, QUICK_AMOUNTS, hydrationTarget } from '@shared/hydration/hydration';
-import { uid } from '@shared/utils';
+import { addDays, uid } from '@shared/utils';
 import { api } from '../api';
 
 export function Hydration() {
   const { data, state: st, profile, today, reload, toast } = useApp();
   const [custom, setCustom] = useState<number | null>(null);
+  const [day, setDay] = useState(today);
   const [ctx, setCtx] = useState<'general' | 'entreno'>('general');
   const [trainMin, setTrainMin] = useState<number | null>(null);
   const h = trainMin != null ? hydrationTarget({ ...profile, weightKg: st.currentWeight }, trainMin, st.flags) : st.hydration;
-  const logs = data.waterLogs.filter((w) => w.date === today).sort((a, b) => a.time.localeCompare(b.time));
+  const logs = data.waterLogs.filter((w) => w.date === day).sort((a, b) => a.time.localeCompare(b.time));
   const total = logs.reduce((a, w) => a + w.ml, 0);
   const remaining = Math.max(0, h.totalMl - total);
 
   const add = async (ml: number) => {
     if (!ml || ml <= 0 || ml > 3000) return toast('Cantidad inválida.', 'error');
     const now = new Date();
-    await api.upsert('water_logs', { id: uid('w_'), date: today, time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, ml, context: ctx });
+    const time = day === today ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` : '12:00';
+    await api.upsert('water_logs', { id: uid('w_'), date: day, time, ml, context: ctx });
     await reload();
   };
 
   return (
     <div className="page">
       <Hero module="hidratacion" title="Hidratación" sub="Una guía orientativa, no una cantidad obligatoria." />
+      <div className="row mb16" style={{ gap: 8 }}>
+        <span className="small muted">Día:</span>
+        <Seg value={day === today ? 'hoy' : day === addDays(today, -1) ? 'ayer' : 'otro'} onChange={(v) => v !== 'otro' && setDay(v === 'hoy' ? today : addDays(today, -1))} options={[{ value: 'hoy', label: 'Hoy' }, { value: 'ayer', label: 'Ayer' }, { value: 'otro', label: 'Otra fecha' }]} />
+        <input type="date" className="input" style={{ width: 170 }} value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} data-testid="water-day" />
+      </div>
       {h.restricted && (
         <div className="mb16">
           <Alert kind="warn">Tienes una condición o indicación médica que limita los líquidos: sigue la cifra de tu médico.</Alert>

@@ -2921,3 +2921,32 @@ details.supp-group[open] > summary::after {
   gap: 6px;
   align-items: flex-start;
 }
+
+/* ── Registrar un día anterior */
+.past-day-btn {
+  color: var(--muted);
+}
+.past-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.past-item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.past-item.span-all {
+  grid-column: 1 / -1;
+}
+.past-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  font-size: 14px;
+}

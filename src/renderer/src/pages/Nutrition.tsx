@@ -13,6 +13,7 @@ import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
 import { DayKindBadge, PhasesPanel, useDayTargets } from '../components/PhasesPanel';
 import { SwipeRow } from '../components/SwipeRow';
+import { takePendingDate } from '../lib/pendingDate';
 import { IconTile } from '../components/visual';
 import { ChefHat } from 'lucide-react';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
@@ -89,7 +90,7 @@ export function Nutrition() {
 
 function DailyLog() {
   const { data, state: st, today, reload, toast, profile, favorites } = useApp();
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(() => takePendingDate('comida') ?? today);
   const [adding, setAdding] = useState<MealSlot | null>(null);
   const [photoSlot, setPhotoSlot] = useState<MealSlot | null>(null);
   const [editing, setEditing] = useState<FoodLog | null>(null);
@@ -128,6 +129,15 @@ function DailyLog() {
           <button className="btn sm" onClick={() => setDate(addDays(date, 1))} disabled={date >= today}>
             →
           </button>
+          {date === today ? (
+            <button className="btn sm ghost" onClick={() => setDate(addDays(today, -1))} data-testid="log-yesterday">
+              Ayer
+            </button>
+          ) : (
+            <button className="btn sm ghost" onClick={() => setDate(today)}>
+              Hoy
+            </button>
+          )}
           <span className="muted cap-first">
             {formatDateLong(date)}
           </span>

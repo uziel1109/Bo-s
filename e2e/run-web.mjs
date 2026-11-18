@@ -297,6 +297,23 @@ try {
   }
   await nav('dashboard');
 
+  console.log('▶ Registrar un día anterior');
+  await nav('dashboard');
+  await page.click('[data-testid=past-day-open]');
+  await page.waitForSelector('[data-testid=past-day]');
+  const ayer = await page.inputValue('[data-testid=past-day-date]');
+  await page.fill('[data-testid=past-water]', '750');
+  await page.click('[data-testid=past-water-add]');
+  await page.waitForFunction(() => /750 ml registrados/.test(document.querySelector('[data-testid=past-day]')?.textContent ?? ''));
+  check(true, `Agua registrada en el día anterior (${ayer})`);
+  await page.click('[data-testid=past-food]');
+  await page.waitForSelector('[data-testid=log-yesterday], .tabs');
+  check((await page.inputValue('.page input[type=date]')) === ayer, 'Registro de comida abierto en el día anterior');
+  await nav('entrenamiento');
+  await page.click('.seg button:has-text("Ayer")');
+  check((await page.inputValue('[data-testid=session-date]')) === ayer, 'Sesión de entrenamiento con fecha de ayer');
+  await page.click('.seg button:has-text("Hoy")');
+
   console.log('▶ IA gratis: copiar instrucciones y pegar la respuesta de la app de Claude');
   await nav('nutricion');
   await page.click('.tabs button:has-text("Registro diario")');
