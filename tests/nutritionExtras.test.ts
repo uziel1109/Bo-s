@@ -8,7 +8,7 @@ import { syncSeedFoods } from '../src/shared/nutrition/seedSync';
 import { syncSeedRecipes } from '../src/shared/nutrition/seedSync';
 import { recipeFit, recipePerServing, recipeToMeal, replaceMeal } from '../src/shared/nutrition/recipeUse';
 import { buildMealPrep } from '../src/shared/nutrition/mealPrep';
-import { generateMealPlan } from '../src/shared/nutrition/mealPlanner';
+import { generateMealPlan, regenerateMeal } from '../src/shared/nutrition/mealPlanner';
 import { satietyInsights, type MealRating } from '../src/shared/analytics/satiety';
 import type { Food, FoodLog } from '../src/shared/types';
 import { addDays } from '../src/shared/utils';
@@ -157,6 +157,39 @@ describe('Recetas nuevas al actualizar', () => {
       expect(db.get('foods', 'xgear_zero_carbs')).toBeTruthy();
       const items = (db.get('recipes', lic.id) as { items: { foodId: string }[] }).items;
       expect(items[0].foodId).toBe(edited ? 'proteina_whey' : 'xgear_zero_carbs');
+    }
+  });
+});
+
+describe('Regenerar una comida completa', () => {
+  const targets = { kcal: 2200, protein: 170, carbs: 220, fat: 70, fiber: 30 };
+  const plan = generateMealPlan({ foods, targets, mealsPerDay: 4, days: 3, preferred: [], budget: 'medio', seed: 5 });
+
+  it('conserva tipo y objetivo, cambia el platillo y respeta las calorías', () => {
+    for (const day of plan.days)
+      for (const meal of day.meals)
+        for (const seed of [0, 17, 123]) {
+          const others = day.meals.filter((m) => m !== meal).flatMap((m) => m.items.map((i) => i.foodId));
+          const fresh = regenerateMeal({ foods, meal, otherFoodIds: others, preferred: [], budget: 'medio', seed })!;
+          expect(fresh, `${meal.slot} ${seed}`).toBeTruthy();
+          expect(fresh.slot).toBe(meal.slot);
+          expect(fresh.target).toEqual(meal.target);
+          expect(fresh.items.map((i) => i.foodId).sort()).not.toEqual(meal.items.map((i) => i.foodId).sort());
+          expect(Math.abs(fresh.totals.kcal - meal.target.kcal) / meal.target.kcal, `${meal.slot} ${fresh.title}`).toBeLessThan(0.15);
+        }
+  });
+
+  it('el plan generado no cambia con la refactorización (misma semilla, mismo resultado)', () => {
+    const again = generateMealPlan({ foods, targets, mealsPerDay: 4, days: 3, preferred: [], budget: 'medio', seed: 5 });
+    expect(again.days).toEqual(plan.days);
+  });
+
+  it('respeta los alimentos permitidos', () => {
+    const meal = plan.days[0].meals.find((m) => m.slot === 'comida')!;
+    const allowed = foods.filter((f) => f.id !== 'pollo_pechuga_cocida');
+    for (let seed = 0; seed < 10; seed++) {
+      const fresh = regenerateMeal({ foods: allowed, meal, preferred: [], budget: 'medio', seed });
+      expect(fresh?.items.some((i) => i.foodId === 'pollo_pechuga_cocida')).toBe(false);
     }
   });
 });

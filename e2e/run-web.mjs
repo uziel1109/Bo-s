@@ -122,6 +122,18 @@ try {
   check(true, 'Deslizar hasta el fondo lo elimina directo');
   await page.click('[data-testid=undo-bar] button');
   await page.waitForFunction((n) => document.querySelectorAll('[data-testid=plan-swipe]').length === n, rows0);
+  // Regenerar una comida completa (con deshacer).
+  const mealTitle = () => page.locator('.meal-card .meal-title').first().textContent();
+  const mealFoods = () => page.locator('.meal-card').first().locator('.food-name').allTextContents();
+  const t0 = await mealTitle();
+  const f0 = (await mealFoods()).join('|');
+  await page.locator('[data-testid=meal-regenerate]').first().click();
+  await page.waitForFunction((f) => [...document.querySelector('.meal-card').querySelectorAll('.food-name')].map((e) => e.textContent).join('|') !== f, f0);
+  check((await mealTitle()) !== t0, `"Otra" regenera la comida completa (${t0} → ${await mealTitle()})`);
+  check((await page.locator('.meal-card').count()) > 2, 'Las demás comidas siguen en el plan');
+  await page.click('[data-testid=undo-bar] button');
+  await page.waitForFunction((f) => [...document.querySelector('.meal-card').querySelectorAll('.food-name')].map((e) => e.textContent).join('|') === f, f0);
+  check(true, '"Deshacer" regresa la comida original');
   await page.click('[data-testid=go-shopping]');
   await page.click('[data-testid=shopping-create]');
   await page.waitForSelector('.shop-item');

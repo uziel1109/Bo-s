@@ -7,7 +7,7 @@ import { IntakeArea } from '../components/charts';
 import type { Food, FoodCategory, FoodLog, Macros, MealSlot } from '@shared/types';
 import { MEAL_LABEL, mealSlots, distributeMacros } from '@shared/nutrition/targets';
 import { filterFoodsForProfile, foodTags, macrosFor, searchFoods, substitutes, sumMacros, validateFood, atwaterCheck } from '@shared/nutrition/foods';
-import { generateMealPlan, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
+import { generateMealPlan, regenerateMeal, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
@@ -552,7 +552,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
   };
 
   // Quitar un alimento de una comida del plan (deslizando a la izquierda), con opción de deshacer.
-  const [undo, setUndo] = useState<{ plan: MealPlan & { id: string }; name: string } | null>(null);
+  const [undo, setUndo] = useState<{ plan: MealPlan & { id: string }; msg: string } | null>(null);
   useEffect(() => {
     if (!undo) return;
     const t = setTimeout(() => setUndo(null), 7000);
@@ -566,7 +566,20 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
     const items = meal.items.filter((_, i) => i !== iIdx);
     const newMeal = { ...meal, items, totals: sumMacros(items.map((x) => x.macros)) };
     await savePlan({ ...mealPlan, days: mealPlan.days.map((x) => (x.index === dIdx ? replaceMeal(x, mIdx, newMeal) : x)) });
-    setUndo({ plan: before, name: meal.items[iIdx].name });
+    setUndo({ plan: before, msg: `Quitaste ${meal.items[iIdx].name.split(',')[0].toLowerCase()}.` });
+  };
+
+  // Regenerar una comida completa: otro platillo con el mismo objetivo de macros.
+  const regenMeal = async (dIdx: number, mIdx: number) => {
+    if (!mealPlan) return;
+    const before = structuredClone(mealPlan);
+    const day = mealPlan.days.find((x) => x.index === dIdx)!;
+    const meal = day.meals[mIdx];
+    const otherFoodIds = day.meals.filter((_, i) => i !== mIdx).flatMap((m) => m.items.map((it) => it.foodId));
+    const fresh = regenerateMeal({ foods: pool, meal, otherFoodIds, preferred: profile.preferredFoods, budget: profile.budget, seed: Math.floor(Math.random() * 1000) });
+    if (!fresh) return toast('No encontré otra opción con tus alimentos permitidos. Revisa exclusiones o agrega alimentos.', 'error');
+    await savePlan({ ...mealPlan, days: mealPlan.days.map((x) => (x.index === dIdx ? replaceMeal(x, mIdx, fresh) : x)) });
+    setUndo({ plan: before, msg: `${MEAL_LABEL[meal.slot]}: ahora ${fresh.title.toLowerCase()}.` });
   };
 
   const logMeal = async (dIdx: number, mIdx: number) => {
@@ -602,14 +615,14 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
         <Seg value={String(day)} onChange={(v) => setDay(Number(v))} options={mealPlan.days.map((_, i) => ({ value: String(i), label: `Día ${i + 1}` }))} />
         <div className="row">
           <button className="btn" onClick={() => generate(mealPlan.days.length)}>
-            <RefreshCw /> Regenerar
+            <RefreshCw /> Regenerar plan
           </button>
           <button className="btn primary" onClick={onShopping} data-testid="go-shopping">
             <ShoppingCart /> Lista del súper
           </button>
         </div>
       </div>
-      <p className="tiny muted" style={{ marginTop: -6 }}>Para quitar un alimento, deslízalo hacia la izquierda; hasta el fondo se elimina directo.</p>
+      <p className="tiny muted" style={{ marginTop: -6 }}>«Otra» cambia la comida completa; ↻ cambia un solo alimento. Para quitar uno, deslízalo a la izquierda.</p>
       <Card title={`Día ${d.index + 1}: totales vs objetivo`}>
         <div className="macro-rings" data-testid="plan-rings">
           <MacroRing label="Calorías" value={Math.round(d.totals.kcal)} target={mealPlan.targets.kcal} unit="kcal" color="var(--m-orange)" big />
@@ -638,6 +651,9 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
             actions={
               <>
                 <span className="kcal-pill mono">{fmt(m.totals.kcal)} kcal</span>
+                <button className="btn sm ghost" onClick={() => regenMeal(d.index, mi)} title="Regenerar esta comida completa" data-testid="meal-regenerate">
+                  <RefreshCw size={14} /> Otra
+                </button>
                 <button className="btn sm ghost" onClick={() => setRecipeFor({ d: d.index, m: mi })} title="Cambiar por una receta" data-testid="meal-recipe">
                   <ChefHat size={14} /> Receta
                 </button>
@@ -675,7 +691,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
       </div>
       {undo && (
         <div className="undo-bar" data-testid="undo-bar">
-          <span>Quitaste {undo.name.split(',')[0].toLowerCase()}.</span>
+          <span>{undo.msg}</span>
           <button
             className="btn sm"
             onClick={async () => {

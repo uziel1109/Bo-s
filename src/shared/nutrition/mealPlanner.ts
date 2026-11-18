@@ -236,6 +236,61 @@ export interface PlannerOptions {
   seed?: number;
 }
 
+interface BuildArgs {
+  foods: Map<string, Food>;
+  slot: MealSlot;
+  target: Macros;
+  preferred: Set<string>;
+  budget: string;
+  used: Set<string>;
+  templateSeed: number;
+  pickSeed: number;
+  avoidTitle?: string;
+}
+
+/** Arma una comida: elige plantilla viable, alimentos por rol y ajusta gramos al objetivo. */
+function buildMeal(a: BuildArgs): PlannedMeal | null {
+  const group = TEMPLATES[templateGroup(a.slot)];
+  // Elegir una plantilla viable (todos los roles obligatorios disponibles).
+  let chosen: { t: Template; foods: (Food | null)[] } | null = null;
+  for (let pass = 0; pass < 2 && !chosen; pass++) {
+    for (let k = 0; k < group.length && !chosen; k++) {
+      const t = group[(((a.templateSeed + k) % group.length) + group.length) % group.length];
+      if (pass === 0 && a.avoidTitle && t.title === a.avoidTitle && group.length > 1) continue;
+      const fs = t.roles.map((r) => pick(r.options, a.foods, a.pickSeed, a.preferred, a.budget, a.used));
+      const ok = t.roles.every((r, i) => fs[i] || r.role === 'X' || r.role === 'V' || r.fixed != null || r.role === 'F');
+      if (ok && fs[t.roles.findIndex((r) => r.role === 'P')]) chosen = { t, foods: fs };
+    }
+  }
+  if (!chosen) return null;
+  const fixedItems: { food: Food; g: number }[] = [];
+  const vars: Var[] = [];
+  chosen.t.roles.forEach((r, i) => {
+    const f = chosen!.foods[i];
+    if (!f) return;
+    a.used.add(f.id);
+    if (r.fixed != null) fixedItems.push({ food: f, g: r.fixed });
+    else vars.push({ food: f, min: r.min ?? 0, max: r.max ?? 300, g: r.min ?? 0 });
+  });
+  const fixedM = sumMacros(fixedItems.map((x) => macrosFor(x.food, x.g)));
+  solveGrams(vars, a.target, fixedM);
+  const items: PlanItem[] = [];
+  // Evita duplicados (misma comida elegida en dos roles): fusiona.
+  const add = (f: Food, g: number) => {
+    const pg = practicalGrams(f, g);
+    if (pg <= 0) return;
+    const existing = items.find((x) => x.foodId === f.id);
+    if (existing) {
+      existing.grams += pg;
+      existing.macros = macrosFor(f, existing.grams);
+      existing.unitHint = unitHint(f, existing.grams);
+    } else items.push({ foodId: f.id, name: f.name, grams: pg, unitHint: unitHint(f, pg), macros: macrosFor(f, pg) });
+  };
+  for (const v of vars) if (v.g >= 4) add(v.food, v.g);
+  for (const x of fixedItems) add(x.food, x.g);
+  return { slot: a.slot, title: chosen.t.title, items, totals: sumMacros(items.map((i) => i.macros)), target: a.target };
+}
+
 export function generateMealPlan(opts: PlannerOptions): MealPlan {
   const foods = new Map(opts.foods.map((f) => [f.id, f]));
   const preferred = new Set(opts.preferred);
@@ -249,50 +304,46 @@ export function generateMealPlan(opts: PlannerOptions): MealPlan {
     const used = new Set<string>();
     const meals: PlannedMeal[] = [];
     slots.forEach((slot, si) => {
-      const target = per[si];
-      const group = TEMPLATES[templateGroup(slot)];
-      // Elegir una plantilla viable (todos los roles obligatorios disponibles).
-      let chosen: { t: Template; foods: (Food | null)[] } | null = null;
-      for (let k = 0; k < group.length && !chosen; k++) {
-        const t = group[(d + si + seed0 + k) % group.length];
-        const fs = t.roles.map((r) => pick(r.options, foods, d * 7 + si + seed0, preferred, opts.budget, used));
-        const ok = t.roles.every((r, i) => fs[i] || r.role === 'X' || r.role === 'V' || r.fixed != null || r.role === 'F');
-        if (ok && fs[t.roles.findIndex((r) => r.role === 'P')]) chosen = { t, foods: fs };
-      }
-      if (!chosen) {
+      const meal = buildMeal({ foods, slot, target: per[si], preferred, budget: opts.budget, used, templateSeed: d + si + seed0, pickSeed: d * 7 + si + seed0 });
+      if (!meal) {
         notes.push(`No hay suficientes alimentos compatibles para ${slot}; agrega alimentos o revisa exclusiones.`);
         return;
       }
-      const fixedItems: { food: Food; g: number }[] = [];
-      const vars: Var[] = [];
-      chosen.t.roles.forEach((r, i) => {
-        const f = chosen!.foods[i];
-        if (!f) return;
-        used.add(f.id);
-        if (r.fixed != null) fixedItems.push({ food: f, g: r.fixed });
-        else vars.push({ food: f, min: r.min ?? 0, max: r.max ?? 300, g: r.min ?? 0 });
-      });
-      // Evita duplicados (misma comida elegida en dos roles): fusiona.
-      const fixedM = sumMacros(fixedItems.map((x) => macrosFor(x.food, x.g)));
-      solveGrams(vars, target, fixedM);
-      const items: PlanItem[] = [];
-      const add = (f: Food, g: number) => {
-        const pg = practicalGrams(f, g);
-        if (pg <= 0) return;
-        const existing = items.find((x) => x.foodId === f.id);
-        if (existing) {
-          existing.grams += pg;
-          existing.macros = macrosFor(f, existing.grams);
-          existing.unitHint = unitHint(f, existing.grams);
-        } else items.push({ foodId: f.id, name: f.name, grams: pg, unitHint: unitHint(f, pg), macros: macrosFor(f, pg) });
-      };
-      for (const v of vars) if (v.g >= 4) add(v.food, v.g);
-      for (const x of fixedItems) add(x.food, x.g);
-      meals.push({ slot, title: chosen.t.title, items, totals: sumMacros(items.map((i) => i.macros)), target });
+      meals.push(meal);
     });
     days.push({ index: d, meals, totals: sumMacros(meals.map((m) => m.totals)) });
   }
   return { createdAt: new Date().toISOString(), targets: opts.targets, days, notes };
+}
+
+export interface RegenerateOptions {
+  foods: Food[]; // ya filtrados por alergias/exclusiones
+  meal: PlannedMeal; // la comida a reemplazar (se conserva su tipo y objetivo)
+  otherFoodIds?: string[]; // alimentos ya usados en las demás comidas del día (para variar)
+  preferred: string[];
+  budget: 'bajo' | 'medio' | 'alto';
+  seed: number;
+}
+
+/**
+ * Regenera una comida completa con el mismo objetivo de macros: prueba otra plantilla y otros alimentos.
+ * Si es posible, el resultado no repite el mismo platillo ni la misma lista de alimentos.
+ */
+export function regenerateMeal(o: RegenerateOptions): PlannedMeal | null {
+  const foods = new Map(o.foods.map((f) => [f.id, f]));
+  const preferred = new Set(o.preferred);
+  const before = o.meal.items.map((i) => i.foodId).sort().join(',');
+  let fallback: PlannedMeal | null = null;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const used = new Set<string>([...(o.otherFoodIds ?? []), ...o.meal.items.map((i) => i.foodId)]);
+    const s = o.seed + attempt * 5;
+    const m = buildMeal({ foods, slot: o.meal.slot, target: o.meal.target, preferred, budget: o.budget, used, templateSeed: s, pickSeed: s * 3 + 1, avoidTitle: o.meal.title });
+    if (!m) continue;
+    const ids = m.items.map((i) => i.foodId).sort().join(',');
+    if (ids !== before && m.title !== o.meal.title) return m;
+    if (ids !== before && !fallback) fallback = m;
+  }
+  return fallback;
 }
 
 /** Desviación porcentual del día respecto al objetivo (para pruebas y para mostrar precisión). */
