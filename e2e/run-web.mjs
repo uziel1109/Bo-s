@@ -174,6 +174,7 @@ try {
   check(await page.isChecked('[data-testid=photo-replace]'), 'Ofrece reemplazar lo ya registrado en esa comida');
   await page.screenshot({ path: path.join(shots, `web-ipad-foto-${browserName}.png`) });
   await page.click('[data-testid=photo-save]');
+  await page.waitForSelector('[data-testid=photo-save]', { state: 'detached' });
   await nav('dashboard');
   check((await page.textContent('[data-testid=dash-kcal]')).replace(/\D/g, '') === '404', 'El registro del día se reemplazó por lo detectado');
   await page.reload({ waitUntil: 'load' });
