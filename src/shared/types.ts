@@ -172,6 +172,7 @@ export interface FoodLog {
   carbs: number;
   fat: number;
   fiber: number;
+  dish_id?: string | null; // platillo guardado (Mis platillos) del que viene
   created_at?: string;
 }
 

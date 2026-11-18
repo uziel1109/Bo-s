@@ -15,7 +15,9 @@ import { DayKindBadge, PhasesPanel, useDayTargets } from '../components/PhasesPa
 import { SwipeRow } from '../components/SwipeRow';
 import { takePendingDate } from '../lib/pendingDate';
 import { IconTile } from '../components/visual';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, UtensilsCrossed } from 'lucide-react';
+import { DishesView, DishPhoto, DishPickerModal } from '../components/Dishes';
+import type { Dish } from '@shared/nutrition/dishes';
 import { Apple, Beef, Check, Coffee, Cookie, Croissant, Egg, Moon, Package, Pill, Share2, ShoppingCart, Soup, Wheat } from 'lucide-react';
 import { recipeFit, recipePerServing, recipeToMeal, replaceMeal } from '@shared/nutrition/recipeUse';
 import { MealPrepView } from '../components/MealPrep';
@@ -56,13 +58,13 @@ function MacroRing({ label, value, target, unit, color, big }: { label: string; 
   );
 }
 
-type Tab = 'hoy' | 'plan' | 'super' | 'prep' | 'fases' | 'alimentos' | 'recetas' | 'objetivos';
+type Tab = 'hoy' | 'plan' | 'super' | 'prep' | 'fases' | 'alimentos' | 'platillos' | 'recetas' | 'objetivos';
 
 const GROUPS: { key: string; label: string; tabs: { value: Tab; label: string }[] }[] = [
   { key: 'hoy', label: 'Registro diario', tabs: [{ value: 'hoy', label: 'Registro diario' }] },
   { key: 'plan', label: 'Plan y súper', tabs: [{ value: 'plan', label: 'Plan de comidas' }, { value: 'super', label: 'Lista del súper' }, { value: 'prep', label: 'Preparación' }] },
   { key: 'fases', label: 'Fases y eventos', tabs: [{ value: 'fases', label: 'Fases y eventos' }] },
-  { key: 'base', label: 'Alimentos y recetas', tabs: [{ value: 'alimentos', label: 'Alimentos' }, { value: 'recetas', label: 'Recetas y frecuentes' }] },
+  { key: 'base', label: 'Alimentos y recetas', tabs: [{ value: 'alimentos', label: 'Alimentos' }, { value: 'platillos', label: 'Mis platillos' }, { value: 'recetas', label: 'Recetas y frecuentes' }] },
   { key: 'objetivos', label: 'Objetivos', tabs: [{ value: 'objetivos', label: 'Objetivos' }] },
 ];
 
@@ -80,6 +82,7 @@ export function Nutrition() {
       {tab === 'prep' && <MealPrepView onPlan={() => setTab('plan')} />}
       {tab === 'fases' && <PhasesPanel />}
       {tab === 'alimentos' && <FoodDB />}
+      {tab === 'platillos' && <DishesView />}
       {tab === 'recetas' && <Recipes />}
       {tab === 'objetivos' && <Targets />}
     </div>
@@ -89,10 +92,11 @@ export function Nutrition() {
 // ───────────────────────── Registro diario
 
 function DailyLog() {
-  const { data, state: st, today, reload, toast, profile, favorites } = useApp();
+  const { data, state: st, today, reload, toast, profile, favorites, dishes } = useApp();
   const [date, setDate] = useState(() => takePendingDate('comida') ?? today);
   const [adding, setAdding] = useState<MealSlot | null>(null);
   const [photoSlot, setPhotoSlot] = useState<MealSlot | null>(null);
+  const [dishSlot, setDishSlot] = useState<MealSlot | null>(null);
   const [editing, setEditing] = useState<FoodLog | null>(null);
   const logs = data.foodLogs.filter((l) => l.date === date);
   const totals = sumMacros(logs);
@@ -164,6 +168,7 @@ function DailyLog() {
       {slots.map((slot) => {
         const items = logs.filter((l) => l.meal === slot);
         const m = sumMacros(items);
+        const mealDishes = [...new Set(items.map((l) => l.dish_id).filter(Boolean))].map((id) => dishes.find((x) => x.id === id)).filter((x): x is Dish => !!x);
         return (
           <Card
             key={slot}
@@ -180,6 +185,11 @@ function DailyLog() {
                 <button className="btn sm ghost" onClick={() => setPhotoSlot(slot)} title="Foto del plato (IA)" data-testid={`photo-${slot}`}>
                   <Camera />
                 </button>
+                {dishes.length > 0 && (
+                  <button className="btn sm ghost" onClick={() => setDishSlot(slot)} title="Agregar de Mis platillos" data-testid={`dish-pick-${slot}`}>
+                    <UtensilsCrossed />
+                  </button>
+                )}
                 <button className="btn sm ghost" onClick={() => copyFromYesterday(slot)} title="Copiar del día anterior">
                   <Copy />
                 </button>
@@ -192,6 +202,17 @@ function DailyLog() {
             {items.length === 0 ? (
 null
             ) : (
+              <>
+              {mealDishes.length > 0 && (
+                <div className="dish-strip" data-testid="meal-dish">
+                  {mealDishes.map((d) => (
+                    <div key={d.id} className="row nowrap" style={{ gap: 10 }}>
+                      <DishPhoto file={d.photo_file} className="dish-thumb" />
+                      <span className="small" style={{ fontWeight: 650 }}>{d.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="food-rows">
                 {items.map((l) => (
                   <div key={l.id} className="food-row">
@@ -221,6 +242,7 @@ null
                   </div>
                 ))}
               </div>
+              </>
             )}
             {items.length > 0 && slot !== 'extra' && <div className="mt8"><SatietyRating date={date} slot={slot} /></div>}
           </Card>
@@ -239,6 +261,7 @@ null
           }}
         />
       )}
+      {dishSlot && <DishPickerModal date={date} slot={dishSlot} onClose={() => setDishSlot(null)} />}
       {photoSlot && <FoodPhotoModal date={date} slot={photoSlot} onClose={() => setPhotoSlot(null)} />}
       {editing && <EditLogModal log={editing} onClose={() => setEditing(null)} />}
     </div>

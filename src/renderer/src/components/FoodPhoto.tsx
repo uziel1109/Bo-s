@@ -7,6 +7,7 @@ import { compareWithPlan, itemMacros, parsePastedAnswer, parsePhotoAnalysis, typ
 import { sumMacros } from '@shared/nutrition/foods';
 import { MEAL_LABEL } from '@shared/nutrition/targets';
 import { daysBetween, uid } from '@shared/utils';
+import { dishLogRows, dishTotals, prepareDish, suggestDishName, type Dish } from '@shared/nutrition/dishes';
 import type { MealPlan } from '@shared/nutrition/mealPlanner';
 import { Alert, fmt, Modal, NumInput, Seg } from './ui';
 import { foodAnalysisPrompt } from '@shared/ai/prompts';
@@ -39,6 +40,8 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
   const [desc, setDesc] = useState('');
   const [pasted, setPasted] = useState('');
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
+  const [dishName, setDishName] = useState('');
+  const [keepPhoto, setKeepPhoto] = useState(true);
   const camRef = useRef<HTMLInputElement>(null);
   const libRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -61,6 +64,7 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
       const r = parsePastedAnswer(pasted, foods);
       setResult(r);
       setItems(r.items);
+      setDishName(suggestDishName(r.dish, desc, r.items));
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error');
     }
@@ -77,8 +81,10 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
       const img = await fileToJpegBase64(f);
       setPreview(img.previewUrl);
       setPhoto(img.base64);
-      setResult(null);
-      setItems([]);
+      if (mode === 'api') {
+        setResult(null);
+        setItems([]);
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error');
     }
@@ -93,6 +99,7 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
       const r = parsePhotoAnalysis(text, foods);
       setResult(r);
       setItems(r.items);
+      setDishName(suggestDishName(r.dish, desc, r.items));
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error');
     } finally {
@@ -100,20 +107,39 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
     }
   };
 
+  // Guarda todo: alimentos estimados por IA (como alimentos propios), la foto, el platillo en "Mis platillos"
+  // y el registro del día ligado a ese platillo.
   const save = async () => {
-    const rows = items
-      .map((it) => {
-        const m = itemMacros(it, foods);
-        if (!m) return null;
-        const f = it.foodId ? foods.find((x) => x.id === it.foodId) : null;
-        return { id: uid('f_'), date, meal: slot, food_id: f?.id ?? null, name: f ? f.name : `${it.name} (estimado por IA)`, grams: it.grams, ...m, created_at: new Date().toISOString() };
-      })
-      .filter(Boolean) as Record<string, unknown>[];
-    if (!rows.length) return toast('No hay elementos con valores nutricionales para registrar.', 'error');
+    const prepared = prepareDish(items, foods);
+    if (!prepared.items.length) return toast('No hay elementos con valores nutricionales para registrar.', 'error');
+    const name = dishName.trim() || result?.dish || 'Platillo';
+    if (prepared.newFoods.length) await api.bulkUpsert('foods', prepared.newFoods);
+    let photoRow: { id?: unknown; file_name?: unknown } | null = null;
+    if (photo && keepPhoto) {
+      try {
+        photoRow = await api.addPhotoBytes(Uint8Array.from(atob(photo), (c) => c.charCodeAt(0)), { date, pose: 'comida', notes: name });
+      } catch (e) {
+        toast(`No se pudo guardar la foto: ${e instanceof Error ? e.message : String(e)}`, 'error');
+      }
+    }
+    const dish: Dish = {
+      id: uid('dish_'),
+      name,
+      date,
+      meal: slot,
+      photo_id: photoRow?.id ? String(photoRow.id) : null,
+      photo_file: photoRow?.file_name ? String(photoRow.file_name) : null,
+      items: prepared.items,
+      totals: dishTotals(prepared.items),
+      source: mode === 'api' ? 'api' : 'claude_app',
+      raw: mode === 'manual' && pasted.trim() ? pasted.trim().slice(0, 20000) : null,
+      created_at: new Date().toISOString(),
+    };
+    await api.upsert('dishes', dish);
     if (replace && existing.length) for (const l of existing) await api.remove('food_logs', l.id);
-    await api.bulkUpsert('food_logs', rows);
+    await api.bulkUpsert('food_logs', dishLogRows(dish, date, slot, 1, () => uid('f_')));
     await reload();
-    toast(`${result?.dish ?? 'Platillo'} registrado en ${MEAL_LABEL[slot]}${replace && existing.length ? ' (reemplazó lo anterior)' : ''}.`);
+    toast(`${name} registrado en ${MEAL_LABEL[slot]} y guardado en Mis platillos${replace && existing.length ? ' (reemplazó lo anterior)' : ''}.`);
     onClose();
   };
 
@@ -181,6 +207,16 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
                 <li>Abre la app de Claude, pega el mensaje y adjunta la foto de tu plato (o solo envíalo con tu descripción).</li>
                 <li>Copia la respuesta completa de Claude, vuelve aquí y pégala abajo.</li>
               </ol>
+              <div className="row" style={{ gap: 10 }}>
+                {preview ? <img src={preview} alt="Tu plato" className="dish-thumb" data-testid="manual-photo-preview" /> : null}
+                <button className="btn sm" onClick={() => camRef.current?.click()}>
+                  <Camera size={15} /> {preview ? 'Otra foto' : 'Tomar foto'}
+                </button>
+                <button className="btn sm" onClick={() => libRef.current?.click()}>
+                  <ImagePlus size={15} /> Galería
+                </button>
+                <span className="tiny muted">Opcional: la foto se guarda con el platillo en <b>Mis platillos</b>.</span>
+              </div>
               <textarea className="input" rows={2} placeholder="Ej.: arroz blanco ~250 g, pollo con aceite ~130 g, papa y zanahoria…" value={desc} onChange={(e) => setDesc(e.target.value)} data-testid="manual-desc" />
               <div className="row">
                 <button className="btn primary" onClick={copyPrompt} data-testid="manual-copy">
@@ -200,8 +236,9 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
               </button>
             </div>
           )}
-          {result && !preview && (
+          {result && !(preview && mode === 'api') && (
             <div className="row" style={{ gap: 24, alignItems: 'flex-end' }}>
+              {preview && <img src={preview} alt="Tu plato" className="dish-thumb lg" />}
               <div>
                 <div className="tiny muted">Platillo</div>
                 <div style={{ fontSize: 22, fontWeight: 720 }} data-testid="photo-dish">
@@ -226,7 +263,7 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
               <div className="col" style={{ gap: 10 }}>
                 {!result && (
                   <>
-                    <p className="small muted">La foto se envía a la IA solo al tocar Analizar. No se guarda en BODY OS.</p>
+                    <p className="small muted">La foto se envía a la IA solo al tocar Analizar. Al registrar, se guarda (cifrada) con el platillo en Mis platillos.</p>
                     <button className="btn primary" onClick={analyze} disabled={busy} data-testid="photo-analyze">
                       {busy ? <Loader2 className="spin" /> : <Sparkles />} {busy ? 'Analizando…' : 'Analizar platillo'}
                     </button>
@@ -337,6 +374,17 @@ export function FoodPhotoModal({ date, slot: initialSlot, onClose }: { date: str
                 </label>
               )}
               <Alert kind="info">Los gramos se estiman a simple vista (error típico de ±20–30 %). Si pesas tu porción y corriges los gramos, el cálculo es exacto con los valores verificados.</Alert>
+              <div className="row" style={{ gap: 14 }}>
+                <label className="col grow" style={{ gap: 4, minWidth: 220 }}>
+                  <span className="field-label">Nombre para Mis platillos</span>
+                  <input className="input" value={dishName} onChange={(e) => setDishName(e.target.value)} data-testid="dish-name" />
+                </label>
+                {photo && (
+                  <label className="row small" style={{ alignSelf: 'flex-end' }}>
+                    <input type="checkbox" checked={keepPhoto} onChange={(e) => setKeepPhoto(e.target.checked)} /> Guardar la foto
+                  </label>
+                )}
+              </div>
               <div className="row" style={{ justifyContent: 'flex-end' }}>
                 <button className="btn primary" onClick={save} disabled={!items.length || missingValues} data-testid="photo-save">
                   <Check /> Agregar al registro de {MEAL_LABEL[slot]}

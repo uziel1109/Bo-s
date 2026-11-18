@@ -9,6 +9,7 @@ import type { StackItem } from '@shared/calendar';
 import type { PhaseSettings } from '@shared/nutrition/phases';
 import type { MealRating } from '@shared/analytics/satiety';
 import type { MuscleFeedback } from '@shared/training/hypertrophy';
+import type { Dish } from '@shared/nutrition/dishes';
 import { today as todayFn, uid } from '@shared/utils';
 
 export interface PhotoRow {
@@ -33,7 +34,8 @@ export interface Store {
   pausedRoutine: Routine | null;
   stack: (StackItem & { id: string })[];
   supplementLogs: { id: string; date: string; supplement_key: string; name: string; dose: string }[];
-  photos: PhotoRow[];
+  photos: PhotoRow[]; // fotos de progreso (sin las de comida)
+  dishes: Dish[];
   recipes: { id: string; name: string; items: { foodId: string; grams: number }[]; servings: number; notes: string | null }[];
   favorites: { id: string; name: string; items: { foodId: string | null; name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number; fiber: number }[] }[];
   mealRatings: MealRating[];
@@ -78,7 +80,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
-      const [profileRow, foods, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions, routines, plans, adjustments, mealPlans, stack, supplementLogs, photos, recipes, favorites, calendarTasks, settingsRows, mealRatings, muscleFeedback] = await Promise.all([
+      const [profileRow, foods, bodyLogs, foodLogs, waterLogs, cardioLogs, stepsLogs, recoveryLogs, sessions, routines, plans, adjustments, mealPlans, stack, supplementLogs, photos, recipes, favorites, calendarTasks, settingsRows, mealRatings, muscleFeedback, dishes] = await Promise.all([
         api.get<{ data: Profile }>('profile', 1),
         api.list<Food>('foods', { orderBy: { column: 'name' } }),
         api.list<BodyLog>('body_logs', { orderBy: { column: 'date' } }),
@@ -101,6 +103,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         api.list<{ key: string; value: unknown }>('settings'),
         api.list<MealRating>('meal_ratings', { orderBy: { column: 'date' } }),
         api.list<MuscleFeedback>('muscle_feedback', { orderBy: { column: 'date' } }),
+        api.list<Dish>('dishes', { orderBy: { column: 'created_at', dir: 'DESC' } }),
       ]);
       const profile = profileRow?.data ?? null;
       const routine = routines[0] ? { ...routines[0].data, id: routines[0].id } : null;
@@ -121,7 +124,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         pausedRoutine: paused ? routine : null,
         stack,
         supplementLogs,
-        photos,
+        photos: photos.filter((p) => (p.pose as string) !== 'comida'),
+        dishes,
         recipes,
         favorites,
         calendarTasks,
@@ -222,6 +226,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     stack: raw?.stack ?? [],
     supplementLogs: raw?.supplementLogs ?? [],
     photos: raw?.photos ?? [],
+    dishes: raw?.dishes ?? [],
     recipes: raw?.recipes ?? [],
     favorites: raw?.favorites ?? [],
     calendarTasks: raw?.calendarTasks ?? [],

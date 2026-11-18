@@ -26,7 +26,7 @@ export const SCHEMA: Record<string, TableSpec> = {
   favorites: { pk: 'id', columns: { id: 'TEXT', name: 'TEXT', items: 'JSON', created_at: 'TEXT' } },
   food_logs: {
     pk: 'id',
-    columns: { id: 'TEXT', date: 'TEXT', meal: 'TEXT', food_id: 'TEXT', name: 'TEXT', grams: 'REAL', kcal: 'REAL', protein: 'REAL', carbs: 'REAL', fat: 'REAL', fiber: 'REAL', created_at: 'TEXT' },
+    columns: { id: 'TEXT', date: 'TEXT', meal: 'TEXT', food_id: 'TEXT', name: 'TEXT', grams: 'REAL', kcal: 'REAL', protein: 'REAL', carbs: 'REAL', fat: 'REAL', fiber: 'REAL', dish_id: 'TEXT', created_at: 'TEXT' },
     indexes: ['date'],
   },
   nutrition_plans: { pk: 'id', columns: { id: 'TEXT', created_at: 'TEXT', active: 'INTEGER', scenario: 'TEXT', targets: 'JSON', reason: 'TEXT' } },
@@ -53,6 +53,7 @@ export const SCHEMA: Record<string, TableSpec> = {
   supplement_logs: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', supplement_key: 'TEXT', name: 'TEXT', dose: 'TEXT' }, indexes: ['date'] },
   photos: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', pose: 'TEXT', file_name: 'TEXT', conditions: 'JSON', notes: 'TEXT' }, indexes: ['date'] },
   calendar_tasks: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', task_key: 'TEXT', title: 'TEXT', type: 'TEXT', done: 'INTEGER', custom: 'INTEGER' }, indexes: ['date'] },
+  dishes: { pk: 'id', columns: { id: 'TEXT', name: 'TEXT', date: 'TEXT', meal: 'TEXT', photo_id: 'TEXT', photo_file: 'TEXT', items: 'JSON', totals: 'JSON', source: 'TEXT', raw: 'TEXT', created_at: 'TEXT' }, indexes: ['date'] },
   meal_ratings: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', meal: 'TEXT', fullness: 'INTEGER', notes: 'TEXT' }, indexes: ['date'] },
   muscle_feedback: { pk: 'id', columns: { id: 'TEXT', date: 'TEXT', session_id: 'TEXT', muscle: 'TEXT', pump: 'INTEGER', soreness: 'INTEGER', joint: 'INTEGER' }, indexes: ['date'] },
   weekly_reports: { pk: 'id', columns: { id: 'TEXT', week_start: 'TEXT', created_at: 'TEXT', data: 'JSON' } },
