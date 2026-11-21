@@ -1,0 +1,26 @@
+appId: com.bodyos.app
+productName: BODY OS
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - node_modules/sql.js/dist/sql-wasm.wasm
+win:
+  target: [nsis, portable]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: BODY OS
+mac:
+  target: [dmg]
+  category: public.app-category.healthcare-fitness
+  extendInfo:
+    NSCameraUsageDescription: BODY OS usa la cámara solo para tomar tus fotos de progreso; se guardan cifradas en este equipo.
+linux:
+  target: [AppImage, deb]
+  category: Utility
+  maintainer: BODY OS

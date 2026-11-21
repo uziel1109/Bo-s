@@ -1,0 +1,315 @@
+import { useMemo, useState } from 'react';
+import { Camera, Activity, AlertTriangle, Brain, CalendarClock, CheckCircle2, Droplets, Dumbbell, Flame, Footprints, Lightbulb, Moon, Ruler, Scale, Sparkles, Target, UtensilsCrossed } from 'lucide-react';
+import { useApp, withBonus } from '../store';
+import { Alert, Card, Claims, fmt } from '../components/ui';
+import { WeightTrendChart, SimpleLine } from '../components/charts';
+import { BodyLogModal, RecoveryModal, StepsInput } from '../components/QuickLogs';
+import { ActivityRings, BodyProgress, JourneyBar, MetricTile, QuickTile } from '../components/visual';
+import { MuscleMap } from '../components/MuscleMap';
+import { weightTrend } from '@shared/analytics/trend';
+import { dailyCoach } from '@shared/assistant/assistant';
+import { addDays, DAY_NAMES, daysBetween, formatDateLong, uid } from '@shared/utils';
+import { stepsTarget, weeklyCardioSummary } from '@shared/cardio/cardio';
+import { strengthTrend } from '@shared/analytics/adaptation';
+import { getExercise } from '@shared/training/exercises';
+import { realPace } from '@shared/body/realPace';
+import { etaWithBreaks, nearGoal } from '@shared/nutrition/phases';
+import { DayKindBadge } from '../components/PhasesPanel';
+import { ChallengesCard } from '../components/Challenges';
+import { NoTrainingBanner } from '../components/NoTraining';
+import { PastDayButton } from '../components/PastDay';
+import type { Muscle } from '@shared/types';
+import { navigate } from '../App';
+import { api } from '../api';
+import { FoodPhotoModal } from '../components/FoodPhoto';
+import { mealSlots } from '@shared/nutrition/targets';
+import type { MealSlot } from '@shared/types';
+
+/** Comida más probable según la hora. */
+function slotForNow(mealsPerDay: number): MealSlot {
+  const h = new Date().getHours();
+  const guess: MealSlot = h < 11 ? 'desayuno' : h < 13 ? 'colacion1' : h < 17 ? 'comida' : h < 19 ? 'colacion2' : 'cena';
+  const slots = mealSlots(mealsPerDay);
+  return slots.includes(guess) ? guess : guess === 'colacion1' ? (slots.includes('desayuno') ? 'desayuno' : 'comida') : slots.includes('comida') ? 'comida' : slots[0];
+}
+
+export function Dashboard() {
+  const { data, state: st, profile, today, reload, toast, settings } = useApp();
+  const [modal, setModal] = useState<'peso' | 'recuperacion' | null>(null);
+  const [photo, setPhoto] = useState(false);
+  const intake = st.intake.get(today);
+  const t = st.todayTargets;
+  const water = data.waterLogs.filter((w) => w.date === today).reduce((a, w) => a + w.ml, 0);
+  const trend = useMemo(() => weightTrend(data.bodyLogs).filter((x) => x.date >= addDays(today, -90)), [data.bodyLogs, today]);
+  const coach = useMemo(() => dailyCoach(data, st), [data, st]);
+  const dow = new Date(today + 'T12:00:00').getDay();
+  const todayDay = data.routine?.days.find((d) => d.weekday === dow);
+  const nextDay = data.routine ? [1, 2, 3, 4, 5, 6, 7].map((i) => data.routine!.days.find((x) => x.weekday === (dow + i) % 7)).find(Boolean) : null;
+  const doneToday = data.sessions.some((s) => s.date === today && s.completed);
+  const steps = withBonus(stepsTarget(data.stepsLogs, today), settings.steps_bonus);
+  const stepsToday = data.stepsLogs.find((s) => s.date === today)?.steps ?? 0;
+  const cardio = weeklyCardioSummary(data.cardioLogs, today);
+  const strength = strengthTrend(data, today);
+  const comp = st.composition;
+  const weightDelta = st.currentWeight - st.initialWeight;
+  const waistLogs = data.bodyLogs.filter((l) => l.waist);
+  const waistDelta = waistLogs.length >= 2 ? (waistLogs[waistLogs.length - 1].waist as number) - (waistLogs[0].waist as number) : null;
+  const urgent = st.flags.filter((f) => f.level === 'urgente');
+  const proj = st.projections[profile.scenario];
+  const real = realPace(data.bodyLogs, today, st.trendWeight ?? st.currentWeight, comp.goalWeight);
+  const brk = data.phases?.dietBreak;
+  const realEtaDate = real.etaDate ? etaWithBreaks(brk, today, real.etaDate).eta : null;
+  const planEtaDate = proj.reached && proj.weeksToGoal != null ? etaWithBreaks(brk, today, addDays(today, proj.weeksToGoal * 7)).eta : null;
+  const realEta = realEtaDate ? new Date(realEtaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
+  const eta = planEtaDate ? new Date(planEtaDate + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : null;
+  const todayMuscles = useMemo(() => {
+    const prim = new Set<Muscle>();
+    const sec = new Set<Muscle>();
+    for (const e of todayDay?.exercises ?? []) {
+      const ex = getExercise(e.exerciseId);
+      if (!ex) continue;
+      prim.add(ex.primary);
+      ex.secondary.forEach((m) => sec.add(m));
+    }
+    return { prim: [...prim], sec: [...sec].filter((m) => !prim.has(m)) };
+  }, [todayDay]);
+
+  const addWater = async (ml: number) => {
+    const now = new Date();
+    await api.upsert('water_logs', { id: uid('w_'), date: today, time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, ml, context: 'general' });
+    await reload();
+    toast(`+${ml} ml registrados.`);
+  };
+
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+
+  return (
+    <div className="page">
+      {urgent.map((f) => (
+        <div className="mb16" key={f.id}>
+          <Alert kind="danger">
+            <b>{f.title}.</b> {f.detail}
+          </Alert>
+        </div>
+      ))}
+
+      {!data.phases?.maintenance && nearGoal(comp.bf.value, profile.targetBodyFat, st.trendWeight ?? st.currentWeight, comp.goalWeight) && (
+        <div className="mb16">
+          <Alert kind="ok">
+            <b>¡Estás muy cerca de tu meta!</b> Prepara tu fase de mantenimiento para no recuperar grasa: Nutrición → Fases y eventos.
+          </Alert>
+        </div>
+      )}
+
+      <div className="mb16">
+        <NoTrainingBanner />
+      </div>
+
+      {/* Tarjeta principal: progreso hacia el objetivo */}
+      <section className="hero" style={{ ['--h1' as string]: 'var(--m-lime)', ['--h2' as string]: 'var(--m-cyan)' }}>
+        <div className="hero-dash">
+          <BodyProgress pct={comp.progressPct} size={120} />
+          <div>
+            <div className="muted small cap-first">{formatDateLong(today)}</div>
+            <h1 style={{ fontSize: 30, marginTop: 2 }}>
+              {greet}
+              {profile.name ? `, ${profile.name}` : ''}
+            </h1>
+            <div className="row" style={{ gap: 28, marginTop: 16, alignItems: 'flex-end' }}>
+              <div data-testid="dash-bf">
+                <div className="tiny muted">{comp.bf.isMeasured ? '% de grasa (medido)' : '% de grasa (estimado)'}</div>
+                <div className="big-number mono">
+                  {fmt(comp.bf.value, 1)}
+                  <span className="unit">%</span>
+                </div>
+              </div>
+              <div>
+                <div className="tiny muted">Objetivo</div>
+                <div className="big-number mono" style={{ color: 'var(--m-lime)' }}>
+                  {profile.targetBodyFat}
+                  <span className="unit">%</span>
+                </div>
+              </div>
+              <div>
+                <div className="tiny muted">Avance</div>
+                <div className="big-number mono">
+                  {comp.progressPct}
+                  <span className="unit">%</span>
+                </div>
+              </div>
+            </div>
+            <JourneyBar start={st.initialComposition.bf.value} current={comp.bf.value} goal={profile.targetBodyFat} />
+            <div className="row mt16">
+              {eta ? (
+                <span className="eta-pill" title="Si sigues el ritmo del escenario de tu plan">
+                  <CalendarClock size={16} /> Según el plan: ~{Math.round(daysBetween(today, planEtaDate!) / 7)} sem · {eta}
+                </span>
+              ) : (
+                <span className="eta-pill">
+                  <Target size={16} /> ¡Estás en tu objetivo!
+                </span>
+              )}
+              {real.status === 'ok' && (
+                <span className="eta-pill real" title={real.message} data-testid="dash-real-eta">
+                  <Footprints size={16} /> A tu ritmo real: ~{Math.round(daysBetween(today, realEtaDate!) / 7)} sem · {realEta}
+                </span>
+              )}
+              {real.status === 'sin_perdida' && <span className="eta-pill real">A tu ritmo real: sin bajar aún</span>}
+              <span className="small muted tech">
+                ≈ {fmt(comp.fatToLose, 1)} kg de grasa por perder · ±{comp.bf.error} pts ({comp.bf.label})
+              </span>
+            </div>
+          </div>
+          <div className="quick-grid hero-quick">
+            <QuickTile icon={Scale} label="Peso" sub="Registrar hoy" color="var(--m-cyan)" onClick={() => setModal('peso')} testId="dash-log-weight" />
+            <QuickTile icon={UtensilsCrossed} label="Comida" sub="Agregar alimento" color="var(--m-orange)" onClick={() => navigate('nutricion')} testId="dash-go-nutrition" />
+            <QuickTile icon={Droplets} label="+250 ml" sub="Un vaso de agua" color="var(--m-blue)" onClick={() => addWater(250)} testId="dash-water" />
+            <QuickTile icon={Moon} label="Recuperación" sub="Sueño y energía" color="var(--m-violet)" onClick={() => setModal('recuperacion')} />
+          </div>
+        </div>
+      </section>
+
+      <div className="mb16" style={{ marginTop: -6 }}>
+        <PastDayButton />
+      </div>
+
+      {/* Métricas corporales */}
+      <div className="grid g2 mb16">
+        <MetricTile
+          testId="dash-weight"
+          icon={Scale}
+          color="var(--m-cyan)"
+          label="Peso actual"
+          value={fmt(st.currentWeight, 1)}
+          unit="kg"
+          foot={
+            <>
+              <span className={weightDelta <= 0 ? 'delta-down' : 'delta-up'}>
+                {weightDelta > 0 ? '+' : ''}
+                {fmt(weightDelta, 1)} kg
+              </span>{' '}
+              desde el inicio · tendencia {fmt(st.trendWeight, 1)}
+            </>
+          }
+        />
+        <MetricTile
+          icon={Ruler}
+          color="var(--m-amber)"
+          label="Cintura"
+          value={fmt(st.latestMeasures.waist, 1)}
+          unit="cm"
+          foot={waistDelta != null ? <span className={waistDelta <= 0 ? 'delta-down' : 'delta-up'}>{waistDelta > 0 ? '+' : ''}{fmt(waistDelta, 1)} cm desde el inicio</span> : 'Mídela cada lunes'}
+        />
+      </div>
+
+      <div className="grid g2 mb16">
+        {/* Anillos del día */}
+        <Card
+          title={
+            <span className="row" style={{ gap: 8 }}>
+              Tu día <DayKindBadge kind={st.dayPlan.kind} label={st.dayPlan.label} />
+            </span>
+          }
+          icon={<Sparkles />}
+          hint={`${fmt(Math.max(0, t.kcal - (intake?.kcal ?? 0)))} kcal restantes`}
+          actions={
+            <button className="btn sm" onClick={() => setPhoto(true)} title="Foto de tu comida" data-testid="dash-photo">
+              <Camera /> Foto
+            </button>
+          }
+        >
+          <ActivityRings
+            size={190}
+            rings={[
+              { label: 'Calorías', value: intake?.kcal ?? 0, max: t.kcal, color: 'var(--m-orange)', display: fmt(intake?.kcal ?? 0), unit: `/ ${fmt(t.kcal)}`, testId: 'dash-kcal' },
+              { label: 'Proteína', value: intake?.protein ?? 0, max: t.protein, color: 'var(--m-pink)', display: fmt(intake?.protein ?? 0), unit: `/ ${t.protein} g` },
+              { label: 'Agua', value: water, max: st.hydration.totalMl, color: 'var(--m-blue)', display: fmt(water), unit: `/ ${fmt(st.hydration.totalMl)} ml` },
+              { label: 'Pasos', value: stepsToday, max: steps.target, color: 'var(--m-lime)', display: fmt(stepsToday), unit: `/ ${fmt(steps.target)}` },
+            ]}
+          />
+          <div className="row between small mt16 tech">
+            <span className="muted">
+              Carbos <b style={{ color: 'var(--text)' }}>{fmt(intake?.carbs ?? 0)}</b>/{t.carbs} g · Grasas <b style={{ color: 'var(--text)' }}>{fmt(intake?.fat ?? 0)}</b>/{t.fat} g
+            </span>
+          </div>
+        </Card>
+
+        {/* Entrenamiento */}
+        <Card title="Entrenamiento" icon={<Dumbbell />} actions={<button className="btn sm" onClick={() => navigate('entrenamiento')}>Abrir</button>}>
+          <div className="workout-today">
+            {todayDay ? <MuscleMap primary={todayMuscles.prim} secondary={todayMuscles.sec} size={74} /> : <Moon size={40} color="var(--m-violet)" />}
+            <div className="grow">
+              <div className="tiny muted">Hoy</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{todayDay ? todayDay.name : 'Descanso de pesas'}</div>
+              {todayDay ? (
+                <div className="small" style={{ marginTop: 4 }}>
+                  {doneToday ? (
+                    <span className="row" style={{ gap: 6, color: 'var(--ok)' }}>
+                      <CheckCircle2 size={16} /> Completado
+                    </span>
+                  ) : (
+                    <span className="muted">
+                      {todayDay.exercises.length} ejercicios · ~{todayDay.estMinutes} min
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="small muted">Camina o haz cardio suave</div>
+              )}
+              {todayDay && !doneToday && (
+                <button className="btn primary sm mt8" onClick={() => navigate('entrenamiento')}>
+                  <Dumbbell /> Empezar
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="col mt16" style={{ gap: 10 }}>
+            {nextDay && (
+              <div className="small muted">
+                Próxima: <b style={{ color: 'var(--text)' }}>{nextDay.name}</b> · {DAY_NAMES[nextDay.weekday]}
+              </div>
+            )}
+            <StepsInput />
+          </div>
+        </Card>
+
+      </div>
+
+      <div className="grid g2 mb16">
+        <CoachCard coach={coach} pending={data.adjustments.filter((a) => a.status === 'pendiente').length} />
+        <ChallengesCard />
+      </div>
+
+      <Card title="Peso y tendencia" hint="Últimos 90 días" className="mb16">
+        <WeightTrendChart data={trend} goal={comp.goalWeight} />
+      </Card>
+
+      {modal === 'peso' && <BodyLogModal onClose={() => setModal(null)} />}
+      {modal === 'recuperacion' && <RecoveryModal onClose={() => setModal(null)} />}
+      {photo && <FoodPhotoModal date={today} slot={slotForNow(profile.mealsPerDay)} onClose={() => setPhoto(false)} />}
+    </div>
+  );
+}
+
+/** Lo esencial del coach en una sola tarjeta: primero lo urgente, luego qué mejorar y un logro. */
+function CoachCard({ coach, pending }: { coach: ReturnType<typeof dailyCoach>; pending: number }) {
+  const items = [
+    ...coach.attention.filter((c) => c.kind !== 'estimacion').slice(0, 1).map((c) => ({ ...c, tone: 'var(--m-red)', Icon: AlertTriangle })),
+    ...coach.improve.slice(0, 2).map((c) => ({ ...c, tone: 'var(--m-amber)', Icon: Lightbulb })),
+    ...coach.good.slice(0, 1).map((c) => ({ ...c, tone: 'var(--m-green)', Icon: CheckCircle2 })),
+  ];
+  return (
+    <Card title="Tu coach" icon={<Brain />} actions={<button className="btn sm" onClick={() => navigate('ia')}>{pending ? `Revisar ajustes (${pending})` : 'Más'}</button>}>
+      <div className="col" style={{ gap: 10 }} data-testid="dash-coach">
+        {items.length === 0 && <p className="small muted">Registra unos días para recibir recomendaciones.</p>}
+        {items.map((c, i) => (
+          <div key={i} className="row nowrap small" style={{ gap: 10, alignItems: 'flex-start' }}>
+            <c.Icon size={16} color={c.tone} style={{ flex: 'none', marginTop: 2 }} />
+            <span>{c.text}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}

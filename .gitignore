@@ -1,0 +1,9 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+e2e/.userdata/
+e2e/screens/
+*.tsbuildinfo
+dist-web/
