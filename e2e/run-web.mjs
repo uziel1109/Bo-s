@@ -151,6 +151,28 @@ try {
   await page.click('.tabs.sub button:has-text("Lista del súper")');
   await page.waitForSelector('.shop-item');
   check((await page.locator('.shop-item.done').count()) === 1, 'La lista y lo marcado persisten tras recargar');
+
+  console.log('▶ Plan sencillo (días de trabajo)');
+  await page.click('.tabs.sub button:has-text("Plan de comidas")');
+  await page.click('.seg button:has-text("Sencillo")');
+  await page.waitForSelector('[data-testid=meal-prep]');
+  const cards = await page.locator('.meal-card').count();
+  check((await page.locator('[data-testid=meal-prep]').count()) === cards, `Cada comida dice cómo se prepara (${(await page.locator('[data-testid=meal-prep]').allTextContents()).join(' / ')})`);
+  check(await page.locator('.alert', { hasText: 'Plan sencillo' }).isVisible(), 'Explica que se cocina una vez el fin de semana');
+  const dayFoods = async (i) => {
+    await page.click(`.seg button:has-text("Día ${i}")`);
+    return (await page.locator('.meal-card .food-name').allTextContents()).join('|');
+  };
+  const d1 = await dayFoods(1);
+  check(d1 === (await dayFoods(3)) && d1 === (await dayFoods(5)), 'Los días se repiten (día 1 = día 3 = día 5)');
+  await page.click('.seg button:has-text("Día 1")');
+  await page.locator('[data-testid=meal-regenerate]').first().click();
+  await page.waitForSelector('[data-testid=undo-bar]');
+  check(/en \d+ días/.test(await page.textContent('[data-testid=undo-bar]')), `"Otra" cambia esa comida en todos los días donde se repite (${(await page.textContent('[data-testid=undo-bar] span')).trim()})`);
+  await page.screenshot({ path: path.join(shots, `web-ipad-plan-sencillo-${browserName}.png`), fullPage: true });
+  await page.click('.seg button:has-text("Variado")');
+  await page.waitForFunction(() => !document.querySelector('[data-testid=meal-prep]'));
+  check(true, 'Se puede volver al plan variado');
   await nav('dashboard');
 
   console.log('▶ Foto del plato (IA simulada)');

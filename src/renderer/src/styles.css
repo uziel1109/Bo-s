@@ -2971,3 +2971,12 @@ details.supp-group[open] > summary::after {
 .dish-pick { all: unset; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
 .dish-pick:hover { border-color: var(--muted); }
 .dish-raw { white-space: pre-wrap; font-size: 12px; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px; max-height: 240px; overflow: auto; }
+
+/* Plan sencillo */
+.plan-styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; max-width: 640px; margin: 0 auto; text-align: left; }
+.plan-style { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.plan-style b { font-size: 16px; }
+.plan-style span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.plan-style.rec { border-color: var(--accent, var(--m-lime)); box-shadow: 0 0 0 1px var(--accent, var(--m-lime)) inset; }
+.plan-style.rec b::after { content: ' · recomendado'; font-size: 12px; font-weight: 600; color: var(--accent, var(--m-lime)); }
+.meal-prep { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 2px; }

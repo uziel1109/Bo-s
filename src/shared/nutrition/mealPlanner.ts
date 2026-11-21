@@ -20,6 +20,7 @@ export interface PlannedMeal {
   items: PlanItem[];
   totals: Macros;
   target: Macros;
+  prep?: string; // plan sencillo: cómo se prepara ("Sin cocinar", "Del tupper"…)
 }
 
 export interface PlannedDay {
@@ -33,11 +34,16 @@ export interface MealPlan {
   targets: Macros;
   days: PlannedDay[];
   notes: string[];
+  style?: PlanStyle;
 }
+
+/** "variado": un platillo distinto cada día. "sencillo": pocas comidas rápidas que se repiten (días de trabajo). */
+export type PlanStyle = 'variado' | 'sencillo';
 
 type Role = 'P' | 'C' | 'F' | 'V' | 'X';
 interface Template {
   title: string;
+  prep?: string;
   roles: { role: Role; options: string[]; fixed?: number; min?: number; max?: number }[];
 }
 
@@ -149,6 +155,140 @@ const TEMPLATES: Record<'desayuno' | 'principal' | 'cena' | 'colacion', Template
   ],
 };
 
+const PROTEIN_POWDER = ['xgear_zero_carbs', 'proteina_whey'];
+const MILK = ['leche_descremada', 'leche_entera'];
+
+/** Plan sencillo: 3–4 ingredientes, sin cocinar o con lo que se cocinó una vez el fin de semana, para llevar. */
+const QUICK: Record<'desayuno' | 'principal' | 'cena' | 'colacion', Template[]> = {
+  desayuno: [
+    {
+      title: 'Licuado de proteína con avena y plátano',
+      prep: 'Licuadora, 2 min · para llevar',
+      roles: [
+        { role: 'P', options: PROTEIN_POWDER, min: 20, max: 60 },
+        { role: 'C', options: ['avena'], min: 20, max: 100 },
+        { role: 'X', options: MILK, fixed: 250 },
+        { role: 'V', options: ['platano', 'fresa', 'manzana'], fixed: 100 },
+      ],
+    },
+    {
+      title: 'Yogur griego con avena y fruta',
+      prep: 'Sin cocinar, 2 min · para llevar',
+      roles: [
+        { role: 'P', options: ['yogur_griego_0', 'cottage_2'], min: 100, max: 450 },
+        { role: 'C', options: ['avena'], min: 0, max: 100 },
+        { role: 'V', options: FRUIT, fixed: 120 },
+        { role: 'F', options: ['almendra', 'nuez', 'cacahuate', 'chia'], min: 0, max: 30 },
+      ],
+    },
+    {
+      title: 'Sándwich de pavo con queso',
+      prep: 'Sin cocinar, 3 min · para llevar',
+      roles: [
+        { role: 'P', options: ['jamon_pavo', 'pavo_pechuga_cocida'], min: 40, max: 220 },
+        { role: 'C', options: ['pan_integral', 'pan_blanco'], min: 0, max: 130 },
+        { role: 'F', options: ['queso_fresco', 'queso_blanco', 'aguacate'], min: 0, max: 70 },
+        { role: 'V', options: ['jitomate', 'lechuga_romana', 'pepino'], fixed: 60 },
+      ],
+    },
+  ],
+  principal: [
+    {
+      title: 'Tupper de pollo con arroz y verdura',
+      prep: 'Del tupper · se cocina el fin de semana',
+      roles: [
+        { role: 'P', options: ['pollo_pechuga_cocida', 'pollo_muslo_cocido'], min: 80, max: 330 },
+        { role: 'C', options: ['arroz_blanco_cocido', 'arroz_integral_cocido', 'papa_cocida'], min: 0, max: 400 },
+        { role: 'V', options: ['brocoli_cocido', 'calabacita_cocida', 'ejote_cocido', 'zanahoria'], fixed: 150 },
+        { role: 'F', options: ['aguacate', 'aceite_oliva'], min: 0, max: 80 },
+      ],
+    },
+    {
+      title: 'Tupper de carne molida con papa y verdura',
+      prep: 'Del tupper · se cocina el fin de semana',
+      roles: [
+        { role: 'P', options: ['res_molida_90_cocida', 'pavo_pechuga_cocida'], min: 80, max: 300 },
+        { role: 'C', options: ['papa_cocida', 'arroz_blanco_cocido', 'camote_horneado'], min: 0, max: 400 },
+        { role: 'V', options: ['calabacita_cocida', 'zanahoria', 'chayote_cocido', 'ejote_cocido'], fixed: 150 },
+        { role: 'F', options: ['aguacate', 'aceite_oliva'], min: 0, max: 60 },
+      ],
+    },
+    {
+      title: 'Tupper de pollo con frijoles y tortillas',
+      prep: 'Del tupper · se cocina el fin de semana',
+      roles: [
+        { role: 'P', options: ['pollo_pechuga_cocida', 'pollo_muslo_cocido'], min: 80, max: 330 },
+        { role: 'C', options: ['tortilla_maiz'], min: 0, max: 270 },
+        { role: 'C', options: ['frijol_negro_cocido', 'frijol_pinto_cocido'], fixed: 100 },
+        { role: 'V', options: ['nopal_cocido', 'lechuga_romana', 'jitomate'], fixed: 120 },
+      ],
+    },
+  ],
+  cena: [
+    {
+      title: 'Tostadas de atún',
+      prep: 'Sin cocinar, 5 min',
+      roles: [
+        { role: 'P', options: ['atun_agua'], min: 70, max: 300 },
+        { role: 'C', options: ['tostada_maiz', 'tortilla_maiz'], min: 0, max: 120 },
+        { role: 'V', options: ['lechuga_romana', 'jitomate', 'pepino'], fixed: 120 },
+        { role: 'F', options: ['aguacate'], min: 0, max: 100 },
+      ],
+    },
+    {
+      title: 'Quesadillas de pollo del tupper',
+      prep: '5 min en el comal',
+      roles: [
+        { role: 'P', options: ['pollo_pechuga_cocida', 'pollo_muslo_cocido'], min: 60, max: 250 },
+        { role: 'C', options: ['tortilla_maiz'], min: 0, max: 220 },
+        { role: 'F', options: ['queso_fresco', 'queso_asadero', 'aguacate'], min: 0, max: 80 },
+      ],
+    },
+    {
+      title: 'Huevos revueltos con tortillas',
+      prep: '5 min',
+      roles: [
+        { role: 'P', options: ['clara_huevo', 'huevo_entero'], min: 66, max: 400 },
+        { role: 'X', options: ['huevo_entero'], fixed: 100 },
+        { role: 'C', options: ['tortilla_maiz'], min: 0, max: 180 },
+        { role: 'V', options: ['jitomate', 'espinaca', 'champinon'], fixed: 80 },
+      ],
+    },
+  ],
+  colacion: [
+    {
+      title: 'Yogur griego con fruta',
+      prep: 'Sin cocinar · para llevar',
+      roles: [
+        { role: 'P', options: ['yogur_griego_0', 'cottage_2'], min: 100, max: 400 },
+        { role: 'C', options: FRUIT, min: 0, max: 250 },
+        { role: 'F', options: ['almendra', 'cacahuate', 'nuez'], min: 0, max: 30 },
+      ],
+    },
+    {
+      title: 'Atún con galletas saladas',
+      prep: 'Sin cocinar · para llevar',
+      roles: [
+        { role: 'P', options: ['atun_agua'], min: 50, max: 200 },
+        { role: 'C', options: ['galletas_saladas', 'tostada_maiz'], min: 0, max: 70 },
+        { role: 'V', options: ['pepino', 'jitomate', 'zanahoria'], fixed: 80 },
+      ],
+    },
+    {
+      title: 'Licuado de proteína con fruta',
+      prep: 'Shaker o licuadora, 1 min',
+      roles: [
+        { role: 'P', options: PROTEIN_POWDER, min: 20, max: 50 },
+        { role: 'X', options: MILK, fixed: 250 },
+        { role: 'C', options: ['platano', 'fresa', 'manzana'], min: 0, max: 200 },
+      ],
+    },
+  ],
+};
+
+/** Cuántas versiones distintas de cada comida tiene el plan sencillo (lo demás se repite). */
+const SIMPLE_VARIETY: Record<keyof typeof TEMPLATES, number> = { desayuno: 1, colacion: 1, principal: 2, cena: 2 };
+
 function templateGroup(slot: MealSlot): keyof typeof TEMPLATES {
   if (slot === 'desayuno') return 'desayuno';
   if (slot === 'comida') return 'principal';
@@ -212,14 +352,14 @@ export function solveGrams(vars: Var[], target: { protein: number; carbs: number
   }
 }
 
-function pick(options: string[], foods: Map<string, Food>, seed: number, preferred: Set<string>, budget: string, used: Set<string>): Food | null {
+function pick(options: string[], foods: Map<string, Food>, seed: number, preferred: Set<string>, budget: string, used: Set<string>, reuse = false): Food | null {
   const avail = options.map((id) => foods.get(id)).filter((f): f is Food => !!f);
   if (!avail.length) return null;
   const scored = avail.map((f, i) => {
     let s = ((i + seed) % avail.length) * 0.1; // rotación
     if (preferred.has(f.id)) s -= 1;
     if (budget === 'bajo' && foodTags(f).includes('economico')) s -= 0.5;
-    if (used.has(f.id)) s += 0.6; // variedad dentro del día
+    if (used.has(f.id)) s += reuse ? -0.7 : 0.6; // variedad dentro del día, o (plan sencillo) reutilizar lo ya comprado
     return { f, s };
   });
   scored.sort((a, b) => a.s - b.s);
@@ -234,6 +374,7 @@ export interface PlannerOptions {
   preferred: string[];
   budget: 'bajo' | 'medio' | 'alto';
   seed?: number;
+  style?: PlanStyle;
 }
 
 interface BuildArgs {
@@ -246,18 +387,20 @@ interface BuildArgs {
   templateSeed: number;
   pickSeed: number;
   avoidTitle?: string;
+  simple?: boolean;
+  week?: Set<string>; // plan sencillo: alimentos ya usados en la semana (se prefieren)
 }
 
 /** Arma una comida: elige plantilla viable, alimentos por rol y ajusta gramos al objetivo. */
 function buildMeal(a: BuildArgs): PlannedMeal | null {
-  const group = TEMPLATES[templateGroup(a.slot)];
+  const group = (a.simple ? QUICK : TEMPLATES)[templateGroup(a.slot)];
   // Elegir una plantilla viable (todos los roles obligatorios disponibles).
   let chosen: { t: Template; foods: (Food | null)[] } | null = null;
   for (let pass = 0; pass < 2 && !chosen; pass++) {
     for (let k = 0; k < group.length && !chosen; k++) {
       const t = group[(((a.templateSeed + k) % group.length) + group.length) % group.length];
       if (pass === 0 && a.avoidTitle && t.title === a.avoidTitle && group.length > 1) continue;
-      const fs = t.roles.map((r) => pick(r.options, a.foods, a.pickSeed, a.preferred, a.budget, a.used));
+      const fs = t.roles.map((r) => pick(r.options, a.foods, a.pickSeed, a.preferred, a.budget, a.simple ? a.week ?? a.used : a.used, !!a.simple));
       const ok = t.roles.every((r, i) => fs[i] || r.role === 'X' || r.role === 'V' || r.fixed != null || r.role === 'F');
       if (ok && fs[t.roles.findIndex((r) => r.role === 'P')]) chosen = { t, foods: fs };
     }
@@ -269,6 +412,7 @@ function buildMeal(a: BuildArgs): PlannedMeal | null {
     const f = chosen!.foods[i];
     if (!f) return;
     a.used.add(f.id);
+    a.week?.add(f.id);
     if (r.fixed != null) fixedItems.push({ food: f, g: r.fixed });
     else vars.push({ food: f, min: r.min ?? 0, max: r.max ?? 300, g: r.min ?? 0 });
   });
@@ -288,7 +432,9 @@ function buildMeal(a: BuildArgs): PlannedMeal | null {
   };
   for (const v of vars) if (v.g >= 4) add(v.food, v.g);
   for (const x of fixedItems) add(x.food, x.g);
-  return { slot: a.slot, title: chosen.t.title, items, totals: sumMacros(items.map((i) => i.macros)), target: a.target };
+  const meal: PlannedMeal = { slot: a.slot, title: chosen.t.title, items, totals: sumMacros(items.map((i) => i.macros)), target: a.target };
+  if (chosen.t.prep) meal.prep = chosen.t.prep;
+  return meal;
 }
 
 export function generateMealPlan(opts: PlannerOptions): MealPlan {
@@ -299,12 +445,19 @@ export function generateMealPlan(opts: PlannerOptions): MealPlan {
   const days: PlannedDay[] = [];
   const notes: string[] = [];
   const seed0 = opts.seed ?? 0;
+  const simple = opts.style === 'sencillo';
+  const week = new Set<string>();
 
   for (let d = 0; d < opts.days; d++) {
     const used = new Set<string>();
     const meals: PlannedMeal[] = [];
     slots.forEach((slot, si) => {
-      const meal = buildMeal({ foods, slot, target: per[si], preferred, budget: opts.budget, used, templateSeed: d + si + seed0, pickSeed: d * 7 + si + seed0 });
+      // Plan sencillo: la misma versión de cada comida se repite (desayuno y colaciones iguales toda la semana;
+      // comida y cena alternan entre 2), así se compra y se cocina una sola vez.
+      const v = simple ? d % SIMPLE_VARIETY[templateGroup(slot)] : d;
+      const normal = () => buildMeal({ foods, slot, target: per[si], preferred, budget: opts.budget, used, templateSeed: simple ? v + si + seed0 : d + si + seed0, pickSeed: simple ? v * 7 + si + seed0 : d * 7 + si + seed0 });
+      // Si tus exclusiones no permiten ninguna opción rápida, se usa una del plan variado.
+      const meal = simple ? (buildMeal({ foods, slot, target: per[si], preferred, budget: opts.budget, used, templateSeed: v + seed0, pickSeed: v * 3 + seed0, simple, week }) ?? normal()) : normal();
       if (!meal) {
         notes.push(`No hay suficientes alimentos compatibles para ${slot}; agrega alimentos o revisa exclusiones.`);
         return;
@@ -313,7 +466,11 @@ export function generateMealPlan(opts: PlannerOptions): MealPlan {
     });
     days.push({ index: d, meals, totals: sumMacros(meals.map((m) => m.totals)) });
   }
-  return { createdAt: new Date().toISOString(), targets: opts.targets, days, notes };
+  if (simple && days.length > 1)
+    notes.push('Plan sencillo: casi todo se repite, así compras y cocinas una sola vez. El fin de semana cocina la proteína y el arroz o la papa de los tuppers (≈ 1 h, ve "Preparación"); entre semana solo armas o calientas.');
+  const plan: MealPlan = { createdAt: new Date().toISOString(), targets: opts.targets, days, notes };
+  if (simple) plan.style = 'sencillo';
+  return plan;
 }
 
 export interface RegenerateOptions {
@@ -323,6 +480,7 @@ export interface RegenerateOptions {
   preferred: string[];
   budget: 'bajo' | 'medio' | 'alto';
   seed: number;
+  style?: PlanStyle;
 }
 
 /**
@@ -337,7 +495,7 @@ export function regenerateMeal(o: RegenerateOptions): PlannedMeal | null {
   for (let attempt = 0; attempt < 12; attempt++) {
     const used = new Set<string>([...(o.otherFoodIds ?? []), ...o.meal.items.map((i) => i.foodId)]);
     const s = o.seed + attempt * 5;
-    const m = buildMeal({ foods, slot: o.meal.slot, target: o.meal.target, preferred, budget: o.budget, used, templateSeed: s, pickSeed: s * 3 + 1, avoidTitle: o.meal.title });
+    const m = buildMeal({ foods, slot: o.meal.slot, target: o.meal.target, preferred, budget: o.budget, used, templateSeed: s, pickSeed: s * 3 + 1, avoidTitle: o.meal.title, simple: o.style === 'sencillo' }) ?? (o.style === 'sencillo' ? buildMeal({ foods, slot: o.meal.slot, target: o.meal.target, preferred, budget: o.budget, used, templateSeed: s, pickSeed: s * 3 + 1, avoidTitle: o.meal.title }) : null);
     if (!m) continue;
     const ids = m.items.map((i) => i.foodId).sort().join(',');
     if (ids !== before && m.title !== o.meal.title) return m;

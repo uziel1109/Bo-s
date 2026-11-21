@@ -7,7 +7,7 @@ import { IntakeArea } from '../components/charts';
 import type { Food, FoodCategory, FoodLog, Macros, MealSlot } from '@shared/types';
 import { MEAL_LABEL, mealSlots, distributeMacros } from '@shared/nutrition/targets';
 import { filterFoodsForProfile, foodTags, macrosFor, searchFoods, substitutes, sumMacros, validateFood, atwaterCheck } from '@shared/nutrition/foods';
-import { generateMealPlan, regenerateMeal, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
+import { generateMealPlan, regenerateMeal, type PlanStyle, type MealPlan, type PlanItem } from '@shared/nutrition/mealPlanner';
 import { addDays, dateRange, formatDateLong, uid } from '@shared/utils';
 import { api } from '../api';
 import { FoodPhotoModal } from '../components/FoodPhoto';
@@ -558,15 +558,16 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
   const [recipeFor, setRecipeFor] = useState<{ d: number; m: number } | null>(null);
   const pool = filterFoodsForProfile(foods, profile.allergies, profile.excludedFoods);
 
-  const generate = async (days: number) => {
-    const plan = generateMealPlan({ foods: pool, targets: st.targets, mealsPerDay: profile.mealsPerDay, days, preferred: profile.preferredFoods, budget: profile.budget, seed: Math.floor(Math.random() * 100) });
+  const generate = async (days: number, style: PlanStyle = mealPlan?.style ?? 'variado') => {
+    const plan = generateMealPlan({ foods: pool, targets: st.targets, mealsPerDay: profile.mealsPerDay, days, preferred: profile.preferredFoods, budget: profile.budget, seed: Math.floor(Math.random() * 100), style });
     const id = uid('mp_');
     await api.upsert('meal_plans', { id, created_at: new Date().toISOString(), active: 1, data: plan });
     await api.setActive('meal_plans', id);
     await reload();
     setDay(0);
-    toast('Plan de comidas generado.');
+    toast(style === 'sencillo' ? 'Plan sencillo generado: pocas comidas que se repiten.' : 'Plan de comidas generado.');
   };
+  const simple = mealPlan?.style === 'sencillo';
 
   const savePlan = async (p: MealPlan & { id: string }) => {
     const { id, ...data } = p;
@@ -599,10 +600,19 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
     const day = mealPlan.days.find((x) => x.index === dIdx)!;
     const meal = day.meals[mIdx];
     const otherFoodIds = day.meals.filter((_, i) => i !== mIdx).flatMap((m) => m.items.map((it) => it.foodId));
-    const fresh = regenerateMeal({ foods: pool, meal, otherFoodIds, preferred: profile.preferredFoods, budget: profile.budget, seed: Math.floor(Math.random() * 1000) });
+    const fresh = regenerateMeal({ foods: pool, meal, otherFoodIds, preferred: profile.preferredFoods, budget: profile.budget, seed: Math.floor(Math.random() * 1000), style: mealPlan.style });
     if (!fresh) return toast('No encontré otra opción con tus alimentos permitidos. Revisa exclusiones o agrega alimentos.', 'error');
-    await savePlan({ ...mealPlan, days: mealPlan.days.map((x) => (x.index === dIdx ? replaceMeal(x, mIdx, fresh) : x)) });
-    setUndo({ plan: before, msg: `${MEAL_LABEL[meal.slot]}: ahora ${fresh.title.toLowerCase()}.` });
+    // En el plan sencillo la misma comida se repite: se cambia en todos los días donde aparece.
+    const same = (m: PlannedMeal) => m.slot === meal.slot && JSON.stringify(m.items) === JSON.stringify(meal.items);
+    let n = 0;
+    const days = mealPlan.days.map((x) => {
+      if (simple ? !x.meals.some(same) : x.index !== dIdx) return x;
+      const mi = simple ? x.meals.findIndex(same) : mIdx;
+      n++;
+      return replaceMeal(x, mi, fresh);
+    });
+    await savePlan({ ...mealPlan, days });
+    setUndo({ plan: before, msg: `${MEAL_LABEL[meal.slot]}: ahora ${fresh.title.toLowerCase()}${n > 1 ? ` (en ${n} días)` : ''}.` });
   };
 
   const logMeal = async (dIdx: number, mIdx: number) => {
@@ -617,12 +627,14 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
       <Card>
         <Empty>
           <p className="mb16">Genera un plan con alimentos accesibles en México ajustado a tus macros, alergias, exclusiones y preferencias.</p>
-          <div className="row" style={{ justifyContent: 'center' }}>
-            <button className="btn primary" onClick={() => generate(7)} data-testid="gen-mealplan">
-              <Utensils /> Generar plan de 7 días
+          <div className="plan-styles">
+            <button className="plan-style rec" onClick={() => generate(7, 'sencillo')} data-testid="gen-mealplan-simple">
+              <b>Plan sencillo</b>
+              <span>Si trabajas todo el día. Pocas comidas que se repiten, de 3–4 ingredientes, sin cocinar o del tupper. Cocinas una vez el fin de semana.</span>
             </button>
-            <button className="btn" onClick={() => generate(1)}>
-              Solo un día
+            <button className="plan-style" onClick={() => generate(7, 'variado')} data-testid="gen-mealplan">
+              <b>Plan variado</b>
+              <span>Un platillo distinto cada día. Requiere más tiempo para comprar y cocinar.</span>
             </button>
           </div>
         </Empty>
@@ -634,6 +646,25 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
   return (
     <div className="col" style={{ gap: 16 }}>
       {outdated && <Alert kind="warn">Tus objetivos cambiaron desde que se generó este plan. Genera uno nuevo para ajustarlo.</Alert>}
+      <div className="row between">
+        <Seg
+          value={simple ? 'sencillo' : 'variado'}
+          onChange={(v) => v !== (simple ? 'sencillo' : 'variado') && generate(mealPlan.days.length, v)}
+          options={[
+            { value: 'sencillo', label: 'Sencillo' },
+            { value: 'variado', label: 'Variado' },
+          ]}
+        />
+        <span className="tiny muted grow">{simple ? 'Pocas comidas rápidas que se repiten.' : 'Un platillo distinto cada día.'}</span>
+      </div>
+      {simple &&
+        mealPlan.notes
+          .filter((n) => n.startsWith('Plan sencillo'))
+          .map((n, i) => (
+            <Alert key={i} kind="info">
+              {n}
+            </Alert>
+          ))}
       <div className="row between">
         <Seg value={String(day)} onChange={(v) => setDay(Number(v))} options={mealPlan.days.map((_, i) => ({ value: String(i), label: `Día ${i + 1}` }))} />
         <div className="row">
@@ -668,6 +699,11 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
                 <span style={{ minWidth: 0 }}>
                   <span className="tiny muted" style={{ display: 'block', fontWeight: 600 }}>{MEAL_LABEL[m.slot]}</span>
                   <span className="meal-title">{m.title}</span>
+                  {m.prep && (
+                    <span className="meal-prep" data-testid="meal-prep">
+                      {m.prep}
+                    </span>
+                  )}
                 </span>
               </span>
             }
@@ -739,7 +775,7 @@ function MealPlanView({ onShopping }: { onShopping: () => void }) {
           }}
         />
       )}
-      {mealPlan.notes.map((n, i) => (
+      {mealPlan.notes.filter((n) => !n.startsWith('Plan sencillo')).map((n, i) => (
         <Alert key={i} kind="warn">
           {n}
         </Alert>
